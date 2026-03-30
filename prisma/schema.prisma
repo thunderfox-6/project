@@ -1,0 +1,135 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// 桥梁信息
+model Bridge {
+  id          String       @id @default(cuid())
+  name        String       // 桥梁名称
+  bridgeCode  String       @unique // 桥梁编号
+  location    String?      // 桥梁位置
+  totalSpans  Int          // 总孔数
+  lineName    String?      // 线路名称
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  spans       BridgeSpan[] // 桥孔列表
+}
+
+// 桥孔信息
+model BridgeSpan {
+  id                String          @id @default(cuid())
+  bridgeId          String
+  spanNumber        Int             // 孔号 (第几孔)
+  spanLength        Float           // 孔长度(米)
+  upstreamBoards    Int             // 上行步行板数量
+  downstreamBoards  Int             // 下行步行板数量
+  upstreamColumns   Int             @default(1) // 上行步行板列数
+  downstreamColumns Int             @default(1) // 下行步行板列数
+  
+  // 避车台配置 (none: 无, single: 单侧, double: 双侧)
+  shelterSide       String          @default("none") // 避车台位置
+  shelterBoards     Int             @default(0) // 避车台步行板数量(每侧)
+  shelterMaxPeople  Int             @default(4) // 避车台建议最大站立人数
+  
+  // 步行板材质配置
+  boardMaterial     String          @default("galvanized_steel") // 材质类型
+  
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  bridge            Bridge          @relation(fields: [bridgeId], references: [id], onDelete: Cascade)
+  walkingBoards     WalkingBoard[]  // 步行板列表
+}
+
+// 步行板信息
+model WalkingBoard {
+  id            String     @id @default(cuid())
+  spanId        String
+  boardNumber   Int        // 步行板编号(第几块)
+  position      String     // 位置: upstream(上行), downstream(下行), shelter_left(左侧避车台), shelter_right(右侧避车台)
+  columnIndex   Int        @default(1) // 列号(第几列)
+  status        String     @default("normal") // 状态: normal, minor_damage, severe_damage, fracture_risk, missing, replaced
+  damageDesc    String?    // 损坏描述
+  inspectedBy   String?    // 检查人
+  inspectedAt   DateTime?  // 检查时间
+  photoUrl      String?    // 照片URL
+  
+  // 新增：防滑性能
+  antiSlipLevel     Int?      @default(100)  // 防滑等级 0-100
+  antiSlipLastCheck DateTime?                // 上次检查时间
+  
+  // 新增：连接状态
+  connectionStatus  String?   @default("normal") // normal/loose/gap_large
+  
+  // 新增：环境因素
+  weatherCondition  String?   @default("normal") // normal/rain/snow/fog/ice
+  visibility        Int?      @default(100)      // 能见度 0-100
+  
+  // 新增：附属设施状态
+  railingStatus     String?   @default("normal") // normal/loose/damaged/missing
+  bracketStatus     String?   @default("normal") // normal/loose/damaged/corrosion/missing 托架状态
+  
+  // 新增：杂物/积水
+  hasObstacle       Boolean   @default(false)
+  obstacleDesc      String?
+  hasWaterAccum     Boolean   @default(false)
+  waterAccumDepth   Float?                       // 积水深度(cm)
+  
+  // 新增：备注
+  remarks           String?   // 备注信息
+  
+  // 步行板独立尺寸(可选，为null时使用全局默认值)
+  boardLength       Float?    // 步行板长度(cm)
+  boardWidth        Float?    // 步行板宽度(cm)
+  boardThickness    Float?    // 步行板厚度(cm)
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  span          BridgeSpan @relation(fields: [spanId], references: [id], onDelete: Cascade)
+}
+
+// 用户信息
+model User {
+  id            String   @id @default(cuid())
+  username      String   @unique  // 用户名
+  password      String            // 密码哈希
+  name          String?           // 真实姓名
+  email         String?  @unique  // 邮箱
+  phone         String?           // 电话
+  department    String?           // 部门
+  role          String   @default("user") // 角色: admin, manager, user, viewer
+  status        String   @default("active") // 状态: active, inactive, locked
+  lastLoginAt   DateTime?         // 最后登录时间
+  lastLoginIp   String?           // 最后登录IP
+  loginCount    Int      @default(0) // 登录次数
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  operations    OperationLog[]    // 操作日志
+}
+
+// 操作日志
+model OperationLog {
+  id            String   @id @default(cuid())
+  userId        String?           // 操作用户ID（可为空，表示系统操作）
+  username      String?           // 操作用户名
+  action        String            // 操作类型: create, update, delete, import, export, login, logout等
+  module        String            // 模块: bridge, span, board, user, system等
+  targetId      String?           // 操作对象ID
+  targetName    String?           // 操作对象名称
+  description   String            // 操作描述
+  oldValue      String?           // 修改前值（JSON格式）
+  newValue      String?           // 修改后值（JSON格式）
+  ip            String?           // 操作IP
+  userAgent     String?           // 用户代理
+  status        String   @default("success") // 操作状态: success, failed
+  errorMsg      String?           // 错误信息
+  createdAt     DateTime @default(now())
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
