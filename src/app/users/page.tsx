@@ -10,11 +10,12 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { 
+import {
   Users, UserPlus, Edit, Trash2, ArrowLeft, Shield, Mail, Phone, Building2,
-  Clock, LogOut, Loader2, Search, Key, UserCheck, UserX
+  Clock, LogOut, Loader2, Search, Key, UserCheck, UserX, Sun, Moon
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTheme } from '@/components/ThemeProvider'
 
 // 用户类型
 interface User {
@@ -49,17 +50,19 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 
 export default function UsersPage() {
   const router = useRouter()
+  const { theme, toggleTheme } = useTheme()
+  const isNight = theme === 'night'
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  
+
   // 对话框状态
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
-  
+
   // 表单状态
   const [formData, setFormData] = useState({
     username: '',
@@ -131,9 +134,9 @@ export default function UsersPage() {
           'Authorization': `Bearer ${token}`
         }
       })
-      
+
       const result = await response.json()
-      
+
       if (result.success) {
         setUsers(result.data)
       } else {
@@ -310,7 +313,7 @@ export default function UsersPage() {
   }
 
   // 过滤用户
-  const filteredUsers = users.filter(user => 
+  const filteredUsers = users.filter(user =>
     user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (user.name && user.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (user.department && user.department.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -324,46 +327,53 @@ export default function UsersPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center ${isNight ? 'bg-slate-900' : 'bg-gray-50'}`}>
         <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className={`min-h-screen ${isNight ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' : 'bg-gray-50'}`}>
       {/* 顶部导航 */}
-      <header className="border-b border-slate-700/50 bg-slate-800/50 backdrop-blur-sm sticky top-0 z-50">
+      <header className={`border-b backdrop-blur-sm sticky top-0 z-50 ${isNight ? 'border-slate-700/50 bg-slate-800/50' : 'border-gray-200 bg-white/80'}`}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="sm"
               onClick={() => router.push('/')}
-              className="text-slate-300 hover:text-white"
+              className={isNight ? 'text-slate-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'}
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               返回主页
             </Button>
-            <div className="h-4 w-px bg-slate-600" />
-            <h1 className="text-lg font-semibold text-white flex items-center gap-2">
+            <div className={`h-4 w-px ${isNight ? 'bg-slate-600' : 'bg-gray-300'}`} />
+            <h1 className={`text-lg font-semibold flex items-center gap-2 ${isNight ? 'text-white' : 'text-gray-900'}`}>
               <Users className="w-5 h-5 text-cyan-400" />
               用户管理
             </h1>
           </div>
-          
+
           <div className="flex items-center gap-3">
-            <div className="text-sm text-slate-400">
+            <div className={`text-sm ${isNight ? 'text-slate-400' : 'text-gray-500'}`}>
               当前用户：<span className="text-cyan-400">{currentUser?.name || currentUser?.username}</span>
               <Badge className="ml-2 bg-cyan-500/20 text-cyan-400 border-cyan-500/50">
                 {ROLE_CONFIG[currentUser?.role || 'user']?.label}
               </Badge>
             </div>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={`p-2 rounded-lg transition-colors ${isNight ? 'text-slate-400 hover:text-white hover:bg-slate-700/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}`}
+            >
+              {isNight ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
             <Button
               variant="ghost"
               size="sm"
               onClick={handleLogout}
-              className="text-slate-400 hover:text-red-400"
+              className={isNight ? 'text-slate-400 hover:text-red-400' : 'text-gray-500 hover:text-red-500'}
             >
               <LogOut className="w-4 h-4" />
             </Button>
@@ -374,63 +384,63 @@ export default function UsersPage() {
       <main className="max-w-7xl mx-auto px-4 py-6">
         {/* 统计卡片 */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <Card className="bg-slate-800/50 border-slate-700/50">
+          <Card className={isNight ? 'bg-slate-800/50 border-slate-700/50' : 'bg-white border-gray-200'}>
             <CardContent className="pt-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-blue-500/20">
                   <Users className="w-5 h-5 text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-white">{users.length}</p>
-                  <p className="text-sm text-slate-400">总用户数</p>
+                  <p className={`text-2xl font-bold ${isNight ? 'text-white' : 'text-gray-900'}`}>{users.length}</p>
+                  <p className={`text-sm ${isNight ? 'text-slate-400' : 'text-gray-500'}`}>总用户数</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          
-          <Card className="bg-slate-800/50 border-slate-700/50">
+
+          <Card className={isNight ? 'bg-slate-800/50 border-slate-700/50' : 'bg-white border-gray-200'}>
             <CardContent className="pt-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-green-500/20">
                   <UserCheck className="w-5 h-5 text-green-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-white">
+                  <p className={`text-2xl font-bold ${isNight ? 'text-white' : 'text-gray-900'}`}>
                     {users.filter(u => u.status === 'active').length}
                   </p>
-                  <p className="text-sm text-slate-400">活跃用户</p>
+                  <p className={`text-sm ${isNight ? 'text-slate-400' : 'text-gray-500'}`}>活跃用户</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          
-          <Card className="bg-slate-800/50 border-slate-700/50">
+
+          <Card className={isNight ? 'bg-slate-800/50 border-slate-700/50' : 'bg-white border-gray-200'}>
             <CardContent className="pt-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-red-500/20">
                   <Shield className="w-5 h-5 text-red-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-white">
+                  <p className={`text-2xl font-bold ${isNight ? 'text-white' : 'text-gray-900'}`}>
                     {users.filter(u => u.role === 'admin').length}
                   </p>
-                  <p className="text-sm text-slate-400">管理员</p>
+                  <p className={`text-sm ${isNight ? 'text-slate-400' : 'text-gray-500'}`}>管理员</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          
-          <Card className="bg-slate-800/50 border-slate-700/50">
+
+          <Card className={isNight ? 'bg-slate-800/50 border-slate-700/50' : 'bg-white border-gray-200'}>
             <CardContent className="pt-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-orange-500/20">
                   <UserX className="w-5 h-5 text-orange-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-white">
+                  <p className={`text-2xl font-bold ${isNight ? 'text-white' : 'text-gray-900'}`}>
                     {users.filter(u => u.status === 'locked').length}
                   </p>
-                  <p className="text-sm text-slate-400">锁定账户</p>
+                  <p className={`text-sm ${isNight ? 'text-slate-400' : 'text-gray-500'}`}>锁定账户</p>
                 </div>
               </div>
             </CardContent>
@@ -438,18 +448,18 @@ export default function UsersPage() {
         </div>
 
         {/* 用户列表 */}
-        <Card className="bg-slate-800/50 border-slate-700/50">
+        <Card className={isNight ? 'bg-slate-800/50 border-slate-700/50' : 'bg-white border-gray-200'}>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-white">用户列表</CardTitle>
+              <CardTitle className={isNight ? 'text-white' : 'text-gray-900'}>用户列表</CardTitle>
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isNight ? 'text-slate-400' : 'text-gray-400'}`} />
                   <Input
                     placeholder="搜索用户..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9 w-64 bg-slate-700/50 border-slate-600 text-white placeholder-slate-500"
+                    className={`pl-9 w-64 ${isNight ? 'bg-slate-700/50 border-slate-600 text-white placeholder-slate-500' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-400'}`}
                   />
                 </div>
                 <Button
@@ -457,7 +467,7 @@ export default function UsersPage() {
                     resetForm()
                     setCreateDialogOpen(true)
                   }}
-                  className="bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500"
+                  className={isNight ? 'bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500' : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500'}
                 >
                   <UserPlus className="w-4 h-4 mr-2" />
                   添加用户
@@ -469,25 +479,25 @@ export default function UsersPage() {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-slate-700/50 hover:bg-transparent">
-                    <TableHead className="text-slate-400">用户名</TableHead>
-                    <TableHead className="text-slate-400">姓名</TableHead>
-                    <TableHead className="text-slate-400">部门</TableHead>
-                    <TableHead className="text-slate-400">角色</TableHead>
-                    <TableHead className="text-slate-400">状态</TableHead>
-                    <TableHead className="text-slate-400">最后登录</TableHead>
-                    <TableHead className="text-slate-400">登录次数</TableHead>
-                    <TableHead className="text-slate-400 text-right">操作</TableHead>
+                  <TableRow className={`${isNight ? 'border-slate-700/50' : 'border-gray-200'} hover:bg-transparent`}>
+                    <TableHead className={isNight ? 'text-slate-400' : 'text-gray-500'}>用户名</TableHead>
+                    <TableHead className={isNight ? 'text-slate-400' : 'text-gray-500'}>姓名</TableHead>
+                    <TableHead className={isNight ? 'text-slate-400' : 'text-gray-500'}>部门</TableHead>
+                    <TableHead className={isNight ? 'text-slate-400' : 'text-gray-500'}>角色</TableHead>
+                    <TableHead className={isNight ? 'text-slate-400' : 'text-gray-500'}>状态</TableHead>
+                    <TableHead className={isNight ? 'text-slate-400' : 'text-gray-500'}>最后登录</TableHead>
+                    <TableHead className={isNight ? 'text-slate-400' : 'text-gray-500'}>登录次数</TableHead>
+                    <TableHead className={`text-right ${isNight ? 'text-slate-400' : 'text-gray-500'}`}>操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredUsers.map((user) => (
-                    <TableRow key={user.id} className="border-slate-700/50 hover:bg-slate-700/30">
-                      <TableCell className="text-white font-medium">{user.username}</TableCell>
-                      <TableCell className="text-slate-300">{user.name || '-'}</TableCell>
-                      <TableCell className="text-slate-300">
+                    <TableRow key={user.id} className={`${isNight ? 'border-slate-700/50 hover:bg-slate-700/30' : 'border-gray-200 hover:bg-gray-50'}`}>
+                      <TableCell className={`font-medium ${isNight ? 'text-white' : 'text-gray-900'}`}>{user.username}</TableCell>
+                      <TableCell className={isNight ? 'text-slate-300' : 'text-gray-600'}>{user.name || '-'}</TableCell>
+                      <TableCell className={isNight ? 'text-slate-300' : 'text-gray-600'}>
                         <div className="flex items-center gap-1">
-                          <Building2 className="w-3 h-3 text-slate-500" />
+                          <Building2 className={`w-3 h-3 ${isNight ? 'text-slate-500' : 'text-gray-400'}`} />
                           {user.department || '-'}
                         </div>
                       </TableCell>
@@ -501,20 +511,20 @@ export default function UsersPage() {
                           {STATUS_CONFIG[user.status]?.label || user.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-slate-300">
+                      <TableCell className={isNight ? 'text-slate-300' : 'text-gray-600'}>
                         <div className="flex items-center gap-1 text-sm">
-                          <Clock className="w-3 h-3 text-slate-500" />
+                          <Clock className={`w-3 h-3 ${isNight ? 'text-slate-500' : 'text-gray-400'}`} />
                           {formatDate(user.lastLoginAt)}
                         </div>
                       </TableCell>
-                      <TableCell className="text-slate-300">{user.loginCount}</TableCell>
+                      <TableCell className={isNight ? 'text-slate-300' : 'text-gray-600'}>{user.loginCount}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => openEditDialog(user)}
-                            className="text-slate-400 hover:text-cyan-400"
+                            className={isNight ? 'text-slate-400 hover:text-cyan-400' : 'text-gray-400 hover:text-blue-600'}
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
@@ -526,7 +536,7 @@ export default function UsersPage() {
                                 setSelectedUser(user)
                                 setDeleteDialogOpen(true)
                               }}
-                              className="text-slate-400 hover:text-red-400"
+                              className={isNight ? 'text-slate-400 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -537,9 +547,9 @@ export default function UsersPage() {
                   ))}
                 </TableBody>
               </Table>
-              
+
               {filteredUsers.length === 0 && (
-                <div className="text-center py-8 text-slate-400">
+                <div className={`text-center py-8 ${isNight ? 'text-slate-400' : 'text-gray-500'}`}>
                   暂无用户数据
                 </div>
               )}
@@ -550,64 +560,64 @@ export default function UsersPage() {
 
       {/* 创建用户对话框 */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="bg-slate-800 border-slate-700 text-white">
+        <DialogContent className={isNight ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-200 text-gray-900'}>
           <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
+            <DialogTitle className={`flex items-center gap-2 ${isNight ? 'text-white' : 'text-gray-900'}`}>
               <UserPlus className="w-5 h-5 text-cyan-400" />
               添加新用户
             </DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogDescription className={isNight ? 'text-slate-400' : 'text-gray-500'}>
               创建新的系统用户账户
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-slate-300">用户名 *</Label>
+                <Label className={isNight ? 'text-slate-300' : 'text-gray-700'}>用户名 *</Label>
                 <Input
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   placeholder="输入用户名"
-                  className="bg-slate-700/50 border-slate-600 text-white"
+                  className={isNight ? 'bg-slate-700/50 border-slate-600 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-slate-300">密码 *</Label>
+                <Label className={isNight ? 'text-slate-300' : 'text-gray-700'}>密码 *</Label>
                 <Input
                   type="password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder="输入密码"
-                  className="bg-slate-700/50 border-slate-600 text-white"
+                  className={isNight ? 'bg-slate-700/50 border-slate-600 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-slate-300">姓名</Label>
+                <Label className={isNight ? 'text-slate-300' : 'text-gray-700'}>姓名</Label>
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="输入真实姓名"
-                  className="bg-slate-700/50 border-slate-600 text-white"
+                  className={isNight ? 'bg-slate-700/50 border-slate-600 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-slate-300">部门</Label>
+                <Label className={isNight ? 'text-slate-300' : 'text-gray-700'}>部门</Label>
                 <Input
                   value={formData.department}
                   onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                   placeholder="输入所属部门"
-                  className="bg-slate-700/50 border-slate-600 text-white"
+                  className={isNight ? 'bg-slate-700/50 border-slate-600 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-slate-300 flex items-center gap-1">
+                <Label className={`flex items-center gap-1 ${isNight ? 'text-slate-300' : 'text-gray-700'}`}>
                   <Mail className="w-3 h-3" /> 邮箱
                 </Label>
                 <Input
@@ -615,37 +625,37 @@ export default function UsersPage() {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="输入邮箱地址"
-                  className="bg-slate-700/50 border-slate-600 text-white"
+                  className={isNight ? 'bg-slate-700/50 border-slate-600 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-slate-300 flex items-center gap-1">
+                <Label className={`flex items-center gap-1 ${isNight ? 'text-slate-300' : 'text-gray-700'}`}>
                   <Phone className="w-3 h-3" /> 电话
                 </Label>
                 <Input
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="输入联系电话"
-                  className="bg-slate-700/50 border-slate-600 text-white"
+                  className={isNight ? 'bg-slate-700/50 border-slate-600 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-slate-300 flex items-center gap-1">
+                <Label className={`flex items-center gap-1 ${isNight ? 'text-slate-300' : 'text-gray-700'}`}>
                   <Shield className="w-3 h-3" /> 角色
                 </Label>
                 <Select value={formData.role} onValueChange={(v) => setFormData({ ...formData, role: v })}>
-                  <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
+                  <SelectTrigger className={isNight ? 'bg-slate-700/50 border-slate-600 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-800 border-slate-700">
+                  <SelectContent className={isNight ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}>
                     {Object.entries(ROLE_CONFIG).map(([key, value]) => (
-                      <SelectItem key={key} value={key} className="text-white hover:bg-slate-700">
+                      <SelectItem key={key} value={key} className={isNight ? 'text-white hover:bg-slate-700' : 'text-gray-900 hover:bg-gray-100'}>
                         <div className="flex flex-col">
                           <span>{value.label}</span>
-                          <span className="text-xs text-slate-400">{value.desc}</span>
+                          <span className={`text-xs ${isNight ? 'text-slate-400' : 'text-gray-500'}`}>{value.desc}</span>
                         </div>
                       </SelectItem>
                     ))}
@@ -653,14 +663,14 @@ export default function UsersPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-slate-300">状态</Label>
+                <Label className={isNight ? 'text-slate-300' : 'text-gray-700'}>状态</Label>
                 <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
-                  <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
+                  <SelectTrigger className={isNight ? 'bg-slate-700/50 border-slate-600 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-800 border-slate-700">
+                  <SelectContent className={isNight ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}>
                     {Object.entries(STATUS_CONFIG).map(([key, value]) => (
-                      <SelectItem key={key} value={key} className="text-white hover:bg-slate-700">
+                      <SelectItem key={key} value={key} className={isNight ? 'text-white hover:bg-slate-700' : 'text-gray-900 hover:bg-gray-100'}>
                         {value.label}
                       </SelectItem>
                     ))}
@@ -669,12 +679,12 @@ export default function UsersPage() {
               </div>
             </div>
           </div>
-          
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateDialogOpen(false)} className="border-slate-600 text-slate-300">
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)} className={isNight ? 'border-slate-600 text-slate-300' : 'border-gray-300 text-gray-600'}>
               取消
             </Button>
-            <Button onClick={handleCreateUser} disabled={formLoading} className="bg-gradient-to-r from-cyan-600 to-purple-600">
+            <Button onClick={handleCreateUser} disabled={formLoading} className={isNight ? 'bg-gradient-to-r from-cyan-600 to-purple-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}>
               {formLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               创建用户
             </Button>
@@ -684,29 +694,29 @@ export default function UsersPage() {
 
       {/* 编辑用户对话框 */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="bg-slate-800 border-slate-700 text-white">
+        <DialogContent className={isNight ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-200 text-gray-900'}>
           <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
+            <DialogTitle className={`flex items-center gap-2 ${isNight ? 'text-white' : 'text-gray-900'}`}>
               <Edit className="w-5 h-5 text-cyan-400" />
               编辑用户
             </DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogDescription className={isNight ? 'text-slate-400' : 'text-gray-500'}>
               修改用户信息（密码留空表示不修改）
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-slate-300">用户名</Label>
+                <Label className={isNight ? 'text-slate-300' : 'text-gray-700'}>用户名</Label>
                 <Input
                   value={formData.username}
                   disabled
-                  className="bg-slate-700/30 border-slate-600 text-slate-400"
+                  className={isNight ? 'bg-slate-700/30 border-slate-600 text-slate-400' : 'bg-gray-100 border-gray-200 text-gray-400'}
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-slate-300 flex items-center gap-1">
+                <Label className={`flex items-center gap-1 ${isNight ? 'text-slate-300' : 'text-gray-700'}`}>
                   <Key className="w-3 h-3" /> 新密码
                 </Label>
                 <Input
@@ -714,35 +724,35 @@ export default function UsersPage() {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder="留空则不修改"
-                  className="bg-slate-700/50 border-slate-600 text-white"
+                  className={isNight ? 'bg-slate-700/50 border-slate-600 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-slate-300">姓名</Label>
+                <Label className={isNight ? 'text-slate-300' : 'text-gray-700'}>姓名</Label>
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="输入真实姓名"
-                  className="bg-slate-700/50 border-slate-600 text-white"
+                  className={isNight ? 'bg-slate-700/50 border-slate-600 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-slate-300">部门</Label>
+                <Label className={isNight ? 'text-slate-300' : 'text-gray-700'}>部门</Label>
                 <Input
                   value={formData.department}
                   onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                   placeholder="输入所属部门"
-                  className="bg-slate-700/50 border-slate-600 text-white"
+                  className={isNight ? 'bg-slate-700/50 border-slate-600 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-slate-300 flex items-center gap-1">
+                <Label className={`flex items-center gap-1 ${isNight ? 'text-slate-300' : 'text-gray-700'}`}>
                   <Mail className="w-3 h-3" /> 邮箱
                 </Label>
                 <Input
@@ -750,37 +760,37 @@ export default function UsersPage() {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="输入邮箱地址"
-                  className="bg-slate-700/50 border-slate-600 text-white"
+                  className={isNight ? 'bg-slate-700/50 border-slate-600 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-slate-300 flex items-center gap-1">
+                <Label className={`flex items-center gap-1 ${isNight ? 'text-slate-300' : 'text-gray-700'}`}>
                   <Phone className="w-3 h-3" /> 电话
                 </Label>
                 <Input
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="输入联系电话"
-                  className="bg-slate-700/50 border-slate-600 text-white"
+                  className={isNight ? 'bg-slate-700/50 border-slate-600 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-slate-300 flex items-center gap-1">
+                <Label className={`flex items-center gap-1 ${isNight ? 'text-slate-300' : 'text-gray-700'}`}>
                   <Shield className="w-3 h-3" /> 角色
                 </Label>
                 <Select value={formData.role} onValueChange={(v) => setFormData({ ...formData, role: v })}>
-                  <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
+                  <SelectTrigger className={isNight ? 'bg-slate-700/50 border-slate-600 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-800 border-slate-700">
+                  <SelectContent className={isNight ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}>
                     {Object.entries(ROLE_CONFIG).map(([key, value]) => (
-                      <SelectItem key={key} value={key} className="text-white hover:bg-slate-700">
+                      <SelectItem key={key} value={key} className={isNight ? 'text-white hover:bg-slate-700' : 'text-gray-900 hover:bg-gray-100'}>
                         <div className="flex flex-col">
                           <span>{value.label}</span>
-                          <span className="text-xs text-slate-400">{value.desc}</span>
+                          <span className={`text-xs ${isNight ? 'text-slate-400' : 'text-gray-500'}`}>{value.desc}</span>
                         </div>
                       </SelectItem>
                     ))}
@@ -788,14 +798,14 @@ export default function UsersPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-slate-300">状态</Label>
+                <Label className={isNight ? 'text-slate-300' : 'text-gray-700'}>状态</Label>
                 <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
-                  <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
+                  <SelectTrigger className={isNight ? 'bg-slate-700/50 border-slate-600 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-800 border-slate-700">
+                  <SelectContent className={isNight ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}>
                     {Object.entries(STATUS_CONFIG).map(([key, value]) => (
-                      <SelectItem key={key} value={key} className="text-white hover:bg-slate-700">
+                      <SelectItem key={key} value={key} className={isNight ? 'text-white hover:bg-slate-700' : 'text-gray-900 hover:bg-gray-100'}>
                         {value.label}
                       </SelectItem>
                     ))}
@@ -804,12 +814,12 @@ export default function UsersPage() {
               </div>
             </div>
           </div>
-          
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)} className="border-slate-600 text-slate-300">
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)} className={isNight ? 'border-slate-600 text-slate-300' : 'border-gray-300 text-gray-600'}>
               取消
             </Button>
-            <Button onClick={handleUpdateUser} disabled={formLoading} className="bg-gradient-to-r from-cyan-600 to-purple-600">
+            <Button onClick={handleUpdateUser} disabled={formLoading} className={isNight ? 'bg-gradient-to-r from-cyan-600 to-purple-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}>
               {formLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               保存修改
             </Button>
@@ -819,19 +829,19 @@ export default function UsersPage() {
 
       {/* 删除确认对话框 */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="bg-slate-800 border-slate-700 text-white">
+        <DialogContent className={isNight ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-200 text-gray-900'}>
           <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
+            <DialogTitle className={`flex items-center gap-2 ${isNight ? 'text-white' : 'text-gray-900'}`}>
               <Trash2 className="w-5 h-5 text-red-400" />
               确认删除
             </DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogDescription className={isNight ? 'text-slate-400' : 'text-gray-500'}>
               您确定要删除用户 <span className="text-cyan-400">{selectedUser?.username}</span> 吗？此操作不可恢复。
             </DialogDescription>
           </DialogHeader>
-          
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} className="border-slate-600 text-slate-300">
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} className={isNight ? 'border-slate-600 text-slate-300' : 'border-gray-300 text-gray-600'}>
               取消
             </Button>
             <Button onClick={handleDeleteUser} disabled={formLoading} className="bg-red-600 hover:bg-red-500">

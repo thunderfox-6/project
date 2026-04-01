@@ -213,41 +213,40 @@ export async function POST(request: NextRequest) {
       boardsData = XLSX.utils.sheet_to_json(boardsSheet) as Record<string, unknown>[]
     }
 
-    // 如果是替换模式，先删除所有现有数据
-    if (mode === 'replace') {
-      const existingBridges = await db.bridge.findMany()
-      for (const bridge of existingBridges) {
-        await db.bridge.delete({ where: { id: bridge.id } })
+    // 使用交互式事务确保整个导入操作的原子性
+    const results = await db.$transaction(async (tx: Prisma.TransactionClient) => {
+      // 如果是替换模式，先删除所有现有数据
+      if (mode === 'replace') {
+        await tx.bridge.deleteMany({})
       }
-    }
 
-    const results = {
-      success: 0,
-      failed: 0,
-      skipped: 0,
-      errors: [] as string[],
-      importedBridgeIds: [] as string[]
-    }
+      const txResults = {
+        success: 0,
+        failed: 0,
+        skipped: 0,
+        errors: [] as string[],
+        importedBridgeIds: [] as string[]
+      }
 
-    // 导入桥梁数据
-    for (const bridgeRow of bridgesData) {
+      // 导入桥梁数据
+      for (const bridgeRow of bridgesData) {
       try {
         const bridgeCode = String(bridgeRow['桥梁编号'] || '')
         const bridgeName = String(bridgeRow['桥梁名称'] || '')
         
         if (!bridgeCode || !bridgeName) {
-          results.failed++
-          results.errors.push(`桥梁数据不完整，缺少名称或编号`)
+          txResults.failed++
+          txResults.errors.push(`桥梁数据不完整，缺少名称或编号`)
           continue
         }
 
         // 检查桥梁编码是否已存在
-        const existingBridge = await db.bridge.findFirst({
+        const existingBridge = await tx.bridge.findFirst({
           where: { bridgeCode }
         })
 
         if (existingBridge && mode === 'merge') {
-          results.skipped++
+          txResults.skipped++
           continue
         }
 
@@ -255,24 +254,22 @@ export async function POST(request: NextRequest) {
         const bridgeSpans = spansData.filter(s => s['桥梁编号'] === bridgeCode)
         const totalSpans = Number(bridgeRow['总孔数']) || bridgeSpans.length || 1
 
-        // 使用事务确保原子性
-        const bridge = await db.$transaction(async (tx: Prisma.TransactionClient) => {
-          // 创建桥梁
-          const newBridge = await tx.bridge.create({
-            data: {
-              name: bridgeName,
-              bridgeCode: bridgeCode,
-              location: String(bridgeRow['位置'] || '') || null,
-              totalSpans: totalSpans,
-              lineName: String(bridgeRow['线路名称'] || '') || null
+        // 创建桥梁（在外层统一事务中）
+        const newBridge = await tx.bridge.create({
+          data: {
+            name: bridgeName,
+            bridgeCode: bridgeCode,
+            location: String(bridgeRow['位置'] || '') || null,
+            totalSpans: totalSpans,
+            lineName: String(bridgeRow['线路名称'] || '') || null
           }
-          })
+        })
 
-          // 创建孔位
-          for (let i = 1; i <= totalSpans; i++) {
-            const spanRow = bridgeSpans.find(s => Number(s['孔号']) === i)
-            
-            const span = await tx.bridgeSpan.create({
+        // 创建孔位
+        for (let i = 1; i <= totalSpans; i++) {
+          const spanRow = bridgeSpans.find(s => Number(s['孔号']) === i)
+
+          const span = await tx.bridgeSpan.create({
               data: {
                 bridgeId: newBridge.id,
                 spanNumber: i,
@@ -404,17 +401,17 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          return newBridge
-        })
-
-        console.log(`[导入] 桥梁 ${bridgeName} (${bridgeCode}) 导入成功，ID: ${bridge.id}`)
-        results.success++
-        results.importedBridgeIds.push(bridge.id)
+        console.log(`[导入] 桥梁 ${bridgeName} (${bridgeCode}) 导入成功，ID: ${newBridge.id}`)
+        txResults.success++
+        txResults.importedBridgeIds.push(newBridge.id)
       } catch (err) {
-        results.failed++
-        results.errors.push(`桥梁 "${bridgeRow['桥梁名称'] || bridgeRow['桥梁编号']}" 导入失败: ${err instanceof Error ? err.message : '未知错误'}`)
+        txResults.failed++
+        txResults.errors.push(`桥梁 "${bridgeRow['桥梁名称'] || bridgeRow['桥梁编号']}" 导入失败: ${err instanceof Error ? err.message : '未知错误'}`)
       }
-    }
+      }
+
+      return txResults
+    }, { timeout: 300_000 })
 
     return NextResponse.json({
       success: true,

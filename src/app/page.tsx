@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import dynamic from 'next/dynamic'
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { useTheme } from '@/components/ThemeProvider'
 import { Button } from '@/components/ui/button'
 import OperationLogDialog from '@/components/user/OperationLogDialog'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,7 +30,6 @@ import {
   XCircle,
   ShieldAlert,
   Wrench,
-  MapPin,
   Hash,
   Ruler,
   ChevronLeft,
@@ -82,19 +83,29 @@ import {
   Upload,
   Download,
   Import,
-  Export,
   LogOut,
   PanelRightOpen,
   PanelRightClose,
-  CloudRain,
   Save,
   RefreshCw,
-  Pencil
+  Pencil,
+  KeyRound,
+  User,
+  LayoutDashboard,
+  MapPin,
+  ClipboardList,
+  FileImage
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { useAuthContext } from '@/components/auth/AuthProvider'
+import ChangePasswordDialog from '@/components/auth/ChangePasswordDialog'
+import MobileGestureGuide from '@/components/bridge/MobileGestureGuide'
 import { syncService } from '@/lib/sync-service'
+import { exportReportToPdf, exportBoardStatusPdf } from '@/lib/pdf-export'
+import TrendAnalysis from '@/components/bridge/TrendAnalysis'
+import PhotoUpload from '@/components/bridge/PhotoUpload'
+import NotificationBell from '@/components/bridge/NotificationBell'
 
 // 动态导入3D组件（禁用SSR）
 const HomeBridge3D = dynamic(() => import('@/components/3d/HomeBridge3D'), {
@@ -332,7 +343,7 @@ const WEATHER_CONFIG: Record<string, { icon: typeof CloudRain; label: string; co
 }
 
 // 移动端底部导航类型
-type MobileTab = 'bridge' | 'alert' | 'detail' | 'ai'
+type MobileTab = 'bridge' | 'alert' | 'detail' | 'ai' | 'profile'
 
 // 用户类型
 interface CurrentUser {
@@ -370,6 +381,7 @@ export default function BridgeVisualizationSystem() {
   // 用户状态
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
   const [checkingAuth, setCheckingAuth] = useState(true)
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false)
   
   // 状态
   const [bridges, setBridges] = useState<Bridge[]>([])
@@ -377,10 +389,10 @@ export default function BridgeVisualizationSystem() {
   const [bridgeStats, setBridgeStats] = useState<BridgeStats | null>(null)
   const [overallSummary, setOverallSummary] = useState<OverallSummary | null>(null)
   const [loading, setLoading] = useState(true)
-  
-  // 主题模式
-  const [theme, setTheme] = useState<'day' | 'night'>('night')
-  
+
+  // 主题模式（使用全局 ThemeProvider）
+  const { theme, toggleTheme } = useTheme()
+
   // 视图状态
   const [viewAngle, setViewAngle] = useState(0)
   const [zoomLevel, setZoomLevel] = useState(1)
@@ -409,7 +421,25 @@ export default function BridgeVisualizationSystem() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fullBridgeScrollRef = useRef<HTMLDivElement>(null)
   const spanRefs = useRef<(HTMLDivElement | null)[]>([])
+  const boardListScrollRef = useRef<HTMLDivElement>(null)
   const [visibleSpanIndex, setVisibleSpanIndex] = useState(0)
+
+  // 虚拟滚动：排序后的步行板列表
+  const sortedBoards = useMemo(() => {
+    if (!selectedBridge || !selectedBridge.spans[selectedSpanIndex]) return []
+    return [...selectedBridge.spans[selectedSpanIndex].walkingBoards].sort((a, b) => {
+      if (a.position !== b.position) return a.position.localeCompare(b.position)
+      if (a.columnIndex !== b.columnIndex) return a.columnIndex - b.columnIndex
+      return a.boardNumber - b.boardNumber
+    })
+  }, [selectedBridge, selectedSpanIndex])
+
+  const boardVirtualizer = useVirtualizer({
+    count: sortedBoards.length,
+    getScrollElement: () => boardListScrollRef.current,
+    estimateSize: () => 44,
+    overscan: 10,
+  })
   
   // 对话框状态
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -539,7 +569,10 @@ export default function BridgeVisualizationSystem() {
   const [isOnline, setIsOnline] = useState(true)
   const [offlineEdits, setOfflineEdits] = useState(0)
   const [isSyncing, setIsSyncing] = useState(false)
-  
+
+  // 安全提示栏关闭状态
+  const [safetyTipDismissed, setSafetyTipDismissed] = useState(false)
+
   // 检查登录状态
   useEffect(() => {
     const checkAuth = () => {
@@ -564,21 +597,6 @@ export default function BridgeVisualizationSystem() {
     
     checkAuth()
   }, [router])
-
-  // 从localStorage加载主题
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme')
-    if (savedTheme === 'day' || savedTheme === 'night') {
-      setTheme(savedTheme)
-    }
-  }, [])
-
-  // 切换主题
-  const toggleTheme = () => {
-    const newTheme = theme === 'night' ? 'day' : 'night'
-    setTheme(newTheme)
-    localStorage.setItem('theme', newTheme)
-  }
 
   // 从localStorage加载AI配置
   useEffect(() => {
@@ -2050,7 +2068,10 @@ ${walkingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n\n')}
         boardNumber: board.boardNumber,
         position: board.position,
         columnIndex: board.columnIndex,
-        status: board.status
+        status: board.status,
+        damageDesc: board.damageDesc,
+        inspectedBy: board.inspectedBy,
+        inspectedAt: board.inspectedAt
       }))
     }
     
@@ -3100,21 +3121,21 @@ ${walkingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n\n')}
       <div className="flex justify-around py-2">
         <button
           onClick={() => { setMobileTab('bridge'); setMobilePanelOpen(false) }}
-          className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${mobileTab === 'bridge' ? (theme === 'night' ? 'text-cyan-400' : 'text-blue-600') : (theme === 'night' ? 'text-slate-400' : 'text-gray-500')}`}
+          className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors ${mobileTab === 'bridge' ? (theme === 'night' ? 'text-cyan-400' : 'text-blue-600') : (theme === 'night' ? 'text-slate-400' : 'text-gray-500')}`}
         >
           <Building2 className="w-5 h-5" />
           <span className="text-xs">桥梁</span>
         </button>
         <button
           onClick={() => { setMobileTab('alert'); setMobilePanelOpen(false) }}
-          className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${mobileTab === 'alert' ? (theme === 'night' ? 'text-cyan-400' : 'text-blue-600') : (theme === 'night' ? 'text-slate-400' : 'text-gray-500')}`}
+          className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors ${mobileTab === 'alert' ? (theme === 'night' ? 'text-cyan-400' : 'text-blue-600') : (theme === 'night' ? 'text-slate-400' : 'text-gray-500')}`}
         >
           <Bell className="w-5 h-5" />
           <span className="text-xs">预警</span>
         </button>
         <button
           onClick={() => { setMobileTab('detail'); setMobilePanelOpen(true) }}
-          className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${mobileTab === 'detail' ? (theme === 'night' ? 'text-cyan-400' : 'text-blue-600') : (theme === 'night' ? 'text-slate-400' : 'text-gray-500')}`}
+          className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors ${mobileTab === 'detail' ? (theme === 'night' ? 'text-cyan-400' : 'text-blue-600') : (theme === 'night' ? 'text-slate-400' : 'text-gray-500')}`}
         >
           <Info className="w-5 h-5" />
           <span className="text-xs">详情</span>
@@ -3122,12 +3143,19 @@ ${walkingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n\n')}
         {hasPermission('ai:use') && (
         <button
           onClick={() => { setMobileTab('ai'); setMobilePanelOpen(true) }}
-          className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${mobileTab === 'ai' ? (theme === 'night' ? 'text-cyan-400' : 'text-blue-600') : (theme === 'night' ? 'text-slate-400' : 'text-gray-500')}`}
+          className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors ${mobileTab === 'ai' ? (theme === 'night' ? 'text-cyan-400' : 'text-blue-600') : (theme === 'night' ? 'text-slate-400' : 'text-gray-500')}`}
         >
           <Bot className="w-5 h-5" />
           <span className="text-xs">AI</span>
         </button>
         )}
+        <button
+          onClick={() => { setMobileTab('profile'); setMobilePanelOpen(false) }}
+          className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors ${mobileTab === 'profile' ? (theme === 'night' ? 'text-cyan-400' : 'text-blue-600') : (theme === 'night' ? 'text-slate-400' : 'text-gray-500')}`}
+        >
+          <User className="w-5 h-5" />
+          <span className="text-xs">我的</span>
+        </button>
       </div>
     </nav>
   )
@@ -3146,14 +3174,18 @@ ${walkingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n\n')}
 
   return (
     <div className={`min-h-screen ${theme === 'night' ? 'bg-[#0a0f1a] text-white' : 'bg-gray-100 text-gray-900'}`}>
-      {/* 顶部安全提示 */}
-      <div className="bg-gradient-to-r from-red-900/30 via-orange-900/30 to-red-900/30 border-b border-red-500/30">
-        <div className="overflow-hidden">
-          <div className="animate-marquee whitespace-nowrap py-2 px-4 text-sm text-orange-300">
-            ⚠️ 安全提示：通过桥梁时请注意观察步行板状态，发现断裂风险步行板禁止通行，及时上报并避让 • 避车台限员规定请严格遵守 • 发现异常情况立即报告
+      {/* 顶部安全提示 - 静态可关闭 */}
+      {!safetyTipDismissed && (
+        <div className="bg-gradient-to-r from-red-900/30 via-orange-900/30 to-red-900/30 border-b border-red-500/30">
+          <div className="flex items-center justify-center py-2 px-4 text-sm text-orange-300 gap-2">
+            <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse flex-shrink-0" />
+            <span>安全提示：通过桥梁时请注意观察步行板状态，发现断裂风险步行板禁止通行，及时上报并避让。避车台限员规定请严格遵守。发现异常情况立即报告。</span>
+            <button onClick={() => setSafetyTipDismissed(true)} className="ml-2 text-orange-400/60 hover:text-orange-300 flex-shrink-0" aria-label="关闭安全提示">
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
-      </div>
+      )}
 
       {/* 头部 */}
       <header className={`border-b backdrop-blur-sm sticky top-0 z-40 ${theme === 'night' ? 'border-cyan-500/20 bg-slate-900/50' : 'border-gray-200 bg-white/80'}`}>
@@ -3165,7 +3197,7 @@ ${walkingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n\n')}
               </div>
               <div>
                 <h1 className={`text-lg md:text-xl font-bold ${theme === 'night' ? 'bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent' : 'text-gray-900'}`}>
-                  铁路桥梁步行板系统
+                  铁路明桥面步行板可视化管理系统
                 </h1>
                 <p className={`text-xs hidden md:block ${theme === 'night' ? 'text-slate-400' : 'text-gray-500'}`}>Railway Bridge Walking Board Management System</p>
               </div>
@@ -3267,9 +3299,47 @@ ${walkingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n\n')}
               </Button>
               )}
               
+              {/* 数据总览按钮 */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="tech-button"
+                onClick={() => router.push('/dashboard')}
+                title="数据总览仪表盘"
+              >
+                <LayoutDashboard className={`w-5 h-5 ${theme === 'night' ? 'text-cyan-400' : 'text-blue-600'}`} />
+                <span className={`hidden md:inline ml-1 ${theme === 'night' ? 'text-cyan-400' : 'text-blue-600'}`}>数据总览</span>
+              </Button>
+
+              {/* 桥梁地图按钮 */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="tech-button"
+                onClick={() => router.push('/map')}
+                title="桥梁地图"
+              >
+                <MapPin className={`w-5 h-5 ${theme === 'night' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                <span className={`hidden md:inline ml-1 ${theme === 'night' ? 'text-emerald-400' : 'text-emerald-600'}`}>地图</span>
+              </Button>
+
+              {/* 巡检管理按钮 */}
+              {hasPermission('bridge:read') && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="tech-button"
+                onClick={() => router.push('/inspection')}
+                title="巡检任务管理"
+              >
+                <ClipboardList className={`w-5 h-5 ${theme === 'night' ? 'text-amber-400' : 'text-amber-600'}`} />
+                <span className={`hidden md:inline ml-1 ${theme === 'night' ? 'text-amber-400' : 'text-amber-600'}`}>巡检</span>
+              </Button>
+              )}
+
               {/* 3D模型查看器按钮 */}
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 size="sm"
                 className="tech-button"
                 onClick={() => window.open('/bridge-3d', '_blank')}
@@ -3294,6 +3364,9 @@ ${walkingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n\n')}
               
               {/* 用户菜单 */}
               <div className="hidden md:flex items-center gap-2 pl-3 border-l border-slate-600/50">
+                {currentUser && (
+                  <NotificationBell userId={currentUser.id} theme={theme} />
+                )}
                 {hasPermission('bridge:delete') && (
                   <Button
                     variant="ghost"
@@ -3322,6 +3395,15 @@ ${walkingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n\n')}
                     {ROLE_LABELS[currentUser?.role || 'user']}
                   </span>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="tech-button"
+                  onClick={() => setChangePasswordOpen(true)}
+                  title="修改密码"
+                >
+                  <KeyRound className={`w-5 h-5 ${theme === 'night' ? 'text-cyan-400' : 'text-blue-600'}`} />
+                </Button>
                 <Button 
                   variant="ghost" 
                   size="sm"
@@ -3381,6 +3463,26 @@ ${walkingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n\n')}
                       title="导出Excel数据"
                     >
                       <Download className="w-4 h-4" />
+                    </Button>
+                    )}
+                    {selectedBridge && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={`h-7 px-2 ${theme === 'night' ? 'text-cyan-400 hover:bg-cyan-500/10' : 'text-blue-600 hover:bg-blue-50'}`}
+                      onClick={async () => {
+                        if (!selectedBridge) return
+                        try {
+                          await exportBoardStatusPdf(selectedBridge)
+                          toast.success('步行板状态PDF已生成')
+                        } catch (err) {
+                          console.error('导出状态图失败:', err)
+                          toast.error('导出失败，请重试')
+                        }
+                      }}
+                      title="导出各孔步行板状态PDF"
+                    >
+                      <FileImage className="w-4 h-4" />
                     </Button>
                     )}
                     {hasPermission('data:import') && (
@@ -3493,6 +3595,19 @@ ${walkingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n\n')}
                 </CardContent>
               </Card>
             )}
+
+            {/* 趋势分析 */}
+            <Card className={theme === 'night' ? 'tech-card' : 'bg-white border border-gray-200'}>
+              <CardHeader className="pb-2">
+                <CardTitle className={`text-sm flex items-center gap-2 ${theme === 'night' ? '' : 'text-gray-900'}`}>
+                  <Activity className={`w-4 h-4 ${theme === 'night' ? 'text-cyan-400' : 'text-blue-600'}`} />
+                  趋势分析
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TrendAnalysis bridgeStats={bridgeStats} bridgeId={selectedBridge?.id || null} theme={theme} />
+              </CardContent>
+            </Card>
           </div>
 
           {/* 中间可视化区域 */}
@@ -3692,7 +3807,37 @@ ${walkingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n\n')}
 
                 {/* 可视化区域 */}
                 <div className={`flex-1 min-h-[300px] md:min-h-[400px] relative overflow-hidden rounded-lg border ${theme === 'night' ? 'bg-slate-800/30 border-slate-700/50' : 'bg-gray-50 border-gray-200'}`}>
-                  {viewMode === '3d' ? render3DBridge() : render2DBridge()}
+                  {bridges.length === 0 ? (
+                    <div className="w-full h-full flex flex-col items-center justify-center p-8">
+                      <div className={`relative mb-6 ${theme === 'night' ? '' : ''}`}>
+                        <div className={`absolute inset-0 rounded-full blur-2xl ${theme === 'night' ? 'bg-cyan-500/10' : 'bg-blue-500/5'}`} style={{ width: '120px', height: '120px', left: '-4px', top: '-4px' }} />
+                        <Building2 className={`w-16 h-16 relative ${theme === 'night' ? 'text-cyan-500/60' : 'text-blue-400/60'}`} strokeWidth={1.2} />
+                      </div>
+                      <h2 className={`text-xl font-bold mb-3 ${theme === 'night' ? 'text-cyan-400' : 'text-blue-600'}`}>
+                        还没有桥梁数据
+                      </h2>
+                      <p className={`text-sm mb-8 text-center max-w-xs ${theme === 'night' ? 'text-slate-400' : 'text-gray-500'}`}>
+                        创建您的第一座桥梁，开始使用步行板可视化管理功能
+                      </p>
+                      {hasPermission('bridge:write') && (
+                        <Button
+                          size="lg"
+                          onClick={() => setCreateDialogOpen(true)}
+                          className={`font-semibold shadow-lg transition-all hover:scale-105 ${theme === 'night' ? 'bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white shadow-cyan-500/25' : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-blue-500/25'}`}
+                        >
+                          <Plus className="w-5 h-5 mr-2" />
+                          创建桥梁
+                        </Button>
+                      )}
+                      {!hasPermission('bridge:write') && (
+                        <p className={`text-xs ${theme === 'night' ? 'text-slate-500' : 'text-gray-400'}`}>
+                          请联系管理员创建桥梁
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    viewMode === '3d' ? render3DBridge() : render2DBridge()
+                  )}
                 </div>
 
                 {/* 孔位缩略图 */}
@@ -3789,7 +3934,7 @@ ${walkingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n\n')}
                         {/* 步行板列表 */}
                         <div>
                           <div className={`flex items-center justify-between mb-2`}>
-                            <h3 className={`text-sm font-semibold flex items-center gap-2 ${theme === 'night' ? 'text-cyan-400' : 'text-blue-600'}`}>步行板状态</h3>
+                            <h3 className={`text-sm font-semibold flex items-center gap-2 ${theme === 'night' ? 'text-cyan-400' : 'text-blue-600'}`}>步行板状态 <span className={`text-xs font-normal ${theme === 'night' ? 'text-slate-400' : 'text-gray-400'}`}>({sortedBoards.length}块)</span></h3>
                             <div className="flex items-center gap-1">
                               {hasPermission('span:write') && (
                               <button
@@ -3816,37 +3961,50 @@ ${walkingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n\n')}
                               )}
                             </div>
                           </div>
-                          <ScrollArea className="h-64">
-                            <div className="space-y-1">
-                              {selectedBridge.spans[selectedSpanIndex].walkingBoards
-                                .sort((a, b) => {
-                                  if (a.position !== b.position) return a.position.localeCompare(b.position)
-                                  if (a.columnIndex !== b.columnIndex) return a.columnIndex - b.columnIndex
-                                  return a.boardNumber - b.boardNumber
-                                })
-                                .map(board => {
-                                  const config = BOARD_STATUS_CONFIG[board.status as keyof typeof BOARD_STATUS_CONFIG] || BOARD_STATUS_CONFIG.normal
-                                  const posLabel = board.position === 'upstream' ? '上行' : board.position === 'downstream' ? '下行' : board.position === 'shelter_left' ? '左侧避车台' : board.position === 'shelter_right' ? '右侧避车台' : '避车台'
-                                  return (
-                                    <button
-                                      key={board.id}
-                                      onClick={() => { if (hasPermission('board:write')) openEditDialog(board) }}
-                                      className={`w-full text-left p-2 rounded transition-colors flex items-center justify-between ${!hasPermission('board:write') ? 'cursor-default' : (theme === 'night' ? 'bg-slate-800/50 hover:bg-slate-700/50' : 'bg-gray-50 hover:bg-gray-100')}`}
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-full" style={{ background: config.color }} />
-                                        <span className={`text-xs ${theme === 'night' ? 'text-slate-300' : 'text-gray-700'}`}>
-                                          {posLabel} {board.columnIndex}列 {board.boardNumber}号
-                                        </span>
-                                      </div>
-                                      <Badge variant="outline" className="text-xs" style={{ color: config.color, borderColor: config.borderColor }}>
-                                        {config.label}
-                                      </Badge>
-                                    </button>
-                                  )
-                                })}
+                          <div
+                            ref={boardListScrollRef}
+                            className="max-h-[500px] overflow-y-auto"
+                          >
+                            <div
+                              style={{
+                                height: `${boardVirtualizer.getTotalSize()}px`,
+                                width: '100%',
+                                position: 'relative',
+                              }}
+                            >
+                              {boardVirtualizer.getVirtualItems().map(virtualRow => {
+                                const board = sortedBoards[virtualRow.index]
+                                const config = BOARD_STATUS_CONFIG[board.status as keyof typeof BOARD_STATUS_CONFIG] || BOARD_STATUS_CONFIG.normal
+                                const posLabel = board.position === 'upstream' ? '上行' : board.position === 'downstream' ? '下行' : board.position === 'shelter_left' ? '左侧避车台' : board.position === 'shelter_right' ? '右侧避车台' : '避车台'
+                                return (
+                                  <button
+                                    key={board.id}
+                                    onClick={() => { if (hasPermission('board:write')) openEditDialog(board) }}
+                                    data-index={virtualRow.index}
+                                    style={{
+                                      position: 'absolute',
+                                      top: 0,
+                                      left: 0,
+                                      width: '100%',
+                                      height: `${virtualRow.size}px`,
+                                      transform: `translateY(${virtualRow.start}px)`,
+                                    }}
+                                    className={`text-left p-2 rounded transition-colors flex items-center justify-between ${!hasPermission('board:write') ? 'cursor-default' : (theme === 'night' ? 'bg-slate-800/50 hover:bg-slate-700/50' : 'bg-gray-50 hover:bg-gray-100')}`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-2 h-2 rounded-full" style={{ background: config.color }} />
+                                      <span className={`text-xs ${theme === 'night' ? 'text-slate-300' : 'text-gray-700'}`}>
+                                        {posLabel} {board.columnIndex}列 {board.boardNumber}号
+                                      </span>
+                                    </div>
+                                    <Badge variant="outline" className="text-xs" style={{ color: config.color, borderColor: config.borderColor }}>
+                                      {config.label}
+                                    </Badge>
+                                  </button>
+                                )
+                              })}
                             </div>
-                          </ScrollArea>
+                          </div>
                         </div>
 
                         <Separator className={`my-4 ${theme === 'night' ? 'bg-slate-700/50' : 'bg-gray-200'}`} />
@@ -3940,6 +4098,91 @@ ${walkingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n\n')}
           </SheetHeader>
           <div className="mt-4 h-[calc(100%-60px)]">
             <AIAssistantPanel />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* 移动端个人中心面板 */}
+      <Sheet open={mobileTab === 'profile'} onOpenChange={(open) => { if (!open) setMobileTab('bridge') }}>
+        <SheetContent side="bottom" className={`h-[70vh] ${theme === 'night' ? 'bg-slate-900 border-t border-cyan-500/30' : 'bg-white border-t border-gray-200'}`}>
+          <SheetHeader>
+            <SheetTitle className={`flex items-center gap-2 ${theme === 'night' ? 'text-cyan-400' : 'text-blue-600'}`}>
+              <User className="w-5 h-5" />
+              个人中心
+            </SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 px-2">
+            {/* 用户信息 */}
+            <div className={`flex items-center gap-4 p-4 rounded-xl mb-4 ${theme === 'night' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-gray-50 border border-gray-200'}`}>
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center ${theme === 'night' ? 'bg-cyan-600/20 border-2 border-cyan-500/50' : 'bg-blue-100 border-2 border-blue-300'}`}>
+                <User className={`w-7 h-7 ${theme === 'night' ? 'text-cyan-400' : 'text-blue-600'}`} />
+              </div>
+              <div>
+                <div className={`text-lg font-bold ${theme === 'night' ? 'text-white' : 'text-gray-900'}`}>
+                  {currentUser?.name || currentUser?.username || '未知用户'}
+                </div>
+                <div className={`text-sm ${theme === 'night' ? 'text-slate-400' : 'text-gray-500'}`}>
+                  @{currentUser?.username}
+                </div>
+                <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full font-medium ${theme === 'night' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-blue-100 text-blue-600'}`}>
+                  {ROLE_LABELS[currentUser?.role || 'user']}
+                </span>
+              </div>
+            </div>
+
+            {/* 菜单项 */}
+            <div className="space-y-2">
+              <button
+                onClick={() => { setChangePasswordOpen(true); setMobileTab('bridge') }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${theme === 'night' ? 'bg-slate-800/30 hover:bg-slate-800/60 text-slate-200' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}
+              >
+                <KeyRound className={`w-5 h-5 ${theme === 'night' ? 'text-cyan-400' : 'text-blue-600'}`} />
+                <span className="flex-1 font-medium">修改密码</span>
+                <ChevronRight className={`w-4 h-4 ${theme === 'night' ? 'text-slate-500' : 'text-gray-400'}`} />
+              </button>
+
+              <button
+                onClick={() => { router.push('/dashboard'); setMobileTab('bridge') }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${theme === 'night' ? 'bg-slate-800/30 hover:bg-slate-800/60 text-slate-200' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}
+              >
+                <Activity className={`w-5 h-5 ${theme === 'night' ? 'text-green-400' : 'text-green-600'}`} />
+                <span className="flex-1 font-medium">数据总览</span>
+                <ChevronRight className={`w-4 h-4 ${theme === 'night' ? 'text-slate-500' : 'text-gray-400'}`} />
+              </button>
+
+              {hasPermission('bridge:delete') && (
+              <button
+                onClick={() => { router.push('/users'); setMobileTab('bridge') }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${theme === 'night' ? 'bg-slate-800/30 hover:bg-slate-800/60 text-slate-200' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}
+              >
+                <Users className={`w-5 h-5 ${theme === 'night' ? 'text-purple-400' : 'text-purple-600'}`} />
+                <span className="flex-1 font-medium">用户管理</span>
+                <ChevronRight className={`w-4 h-4 ${theme === 'night' ? 'text-slate-500' : 'text-gray-400'}`} />
+              </button>
+              )}
+
+              {hasPermission('log:read') && (
+              <button
+                onClick={() => { setLogDialogOpen(true); setMobileTab('bridge') }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${theme === 'night' ? 'bg-slate-800/30 hover:bg-slate-800/60 text-slate-200' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}
+              >
+                <FileText className={`w-5 h-5 ${theme === 'night' ? 'text-orange-400' : 'text-orange-600'}`} />
+                <span className="flex-1 font-medium">操作日志</span>
+                <ChevronRight className={`w-4 h-4 ${theme === 'night' ? 'text-slate-500' : 'text-gray-400'}`} />
+              </button>
+              )}
+            </div>
+
+            {/* 退出登录 */}
+            <div className="mt-6">
+              <button
+                onClick={handleLogout}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors ${theme === 'night' ? 'bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30' : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'}`}
+              >
+                <LogOut className="w-5 h-5" />
+                退出登录
+              </button>
+            </div>
           </div>
         </SheetContent>
       </Sheet>
@@ -4618,9 +4861,15 @@ ${walkingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n\n')}
                   </div>
                 </div>
               </div>
+
+              {/* 步行板照片 */}
+              <div className="space-y-2">
+                <Label className={theme === 'night' ? 'text-slate-300' : 'text-gray-700'}>步行板照片</Label>
+                <PhotoUpload boardId={editingBoard.id} theme={theme} />
+              </div>
             </div>
           )}
-          
+
           <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setEditDialogOpen(false)} className={theme === 'night' ? 'border-slate-600 text-slate-300' : 'border-gray-300 text-gray-700'}>取消</Button>
             <Button onClick={handleUpdateBoard} className={theme === 'night' ? 'bg-cyan-600 hover:bg-cyan-500' : 'bg-blue-600 hover:bg-blue-500'}>保存</Button>
@@ -4833,7 +5082,7 @@ ${walkingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n\n')}
           
           <div className="py-4">
             <ScrollArea className="h-[60vh]">
-              <div className={`prose prose-sm max-w-none ${theme === 'night' ? 'prose-invert' : ''}`}>
+              <div id="report-content" className={`prose prose-sm max-w-none ${theme === 'night' ? 'prose-invert' : ''}`}>
                 {reportContent.split('\n').map((line, i) => {
                   // 标题
                   if (line.startsWith('# ')) {
@@ -4881,7 +5130,7 @@ ${walkingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n\n')}
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setReportDialogOpen(false)} className={theme === 'night' ? 'border-slate-600 text-slate-300' : 'border-gray-300 text-gray-700'}>关闭</Button>
-            <Button 
+            <Button
               onClick={() => {
                 navigator.clipboard.writeText(reportContent)
                 toast.success('报告已复制到剪贴板')
@@ -4889,6 +5138,23 @@ ${walkingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n\n')}
               className={theme === 'night' ? 'bg-cyan-600 hover:bg-cyan-500' : 'bg-blue-600 hover:bg-blue-500'}
             >
               复制报告
+            </Button>
+            <Button
+              onClick={async () => {
+                try {
+                  const bridgeName = selectedBridge?.name || '桥梁'
+                  const date = new Date().toISOString().slice(0, 10)
+                  await exportReportToPdf('report-content', `桥梁报告_${bridgeName}_${date}.pdf`)
+                  toast.success('PDF报告已生成并下载')
+                } catch (err) {
+                  console.error('导出PDF失败:', err)
+                  toast.error('导出PDF失败，请重试')
+                }
+              }}
+              className={theme === 'night' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}
+            >
+              <Download className="w-4 h-4 mr-1" />
+              导出PDF
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -5223,6 +5489,12 @@ ${walkingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n\n')}
 
       {/* 操作日志对话框 */}
       <OperationLogDialog open={logDialogOpen} onClose={() => setLogDialogOpen(false)} />
+
+      {/* 修改密码对话框 */}
+      <ChangePasswordDialog open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} theme={theme} />
+
+      {/* 移动端手势引导 */}
+      {isMobile && <MobileGestureGuide theme={theme} />}
     </div>
   )
 }

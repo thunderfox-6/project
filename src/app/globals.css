@@ -133,6 +133,42 @@
   --sidebar-ring: #00f0ff;
 }
 
+.theme-day {
+  --background: #f8fafc;
+  --foreground: #1e293b;
+  --card: #ffffff;
+  --card-foreground: #1e293b;
+  --popover: #ffffff;
+  --popover-foreground: #1e293b;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --secondary: rgba(37, 99, 235, 0.1);
+  --secondary-foreground: #2563eb;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: rgba(139, 92, 246, 0.1);
+  --accent-foreground: #7c3aed;
+  --destructive: #ef4444;
+  --border: rgba(0, 0, 0, 0.12);
+  --input: #ffffff;
+  --ring: #2563eb;
+
+  --chart-1: #2563eb;
+  --chart-2: #7c3aed;
+  --chart-3: #16a34a;
+  --chart-4: #d97706;
+  --chart-5: #dc2626;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1e293b;
+  --sidebar-primary: #2563eb;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(37, 99, 235, 0.08);
+  --sidebar-accent-foreground: #2563eb;
+  --sidebar-border: rgba(0, 0, 0, 0.08);
+  --sidebar-ring: #2563eb;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -514,16 +550,6 @@
     }
   }
   
-  /* 滚动提示条 */
-  .scroll-alert {
-    animation: scrollAlert 20s linear infinite;
-  }
-  
-  @keyframes scrollAlert {
-    0% { transform: translateX(100%); }
-    100% { transform: translateX(-100%); }
-  }
-  
   /* 六边形边框 */
   .hex-border {
     clip-path: polygon(10% 0%, 90% 0%, 100% 50%, 90% 100%, 10% 100%, 0% 50%);
@@ -554,12 +580,12 @@
   background: linear-gradient(180deg, rgba(139, 92, 246, 0.3), transparent);
 }
 
-/* 输入框科技风格 */
-input[type="text"],
-input[type="number"],
-input[type="search"],
-textarea,
-select {
+/* Night theme input styles */
+.theme-night input[type="text"],
+.theme-night input[type="number"],
+.theme-night input[type="search"],
+.theme-night textarea,
+.theme-night select {
   background: rgba(17, 24, 39, 0.8) !important;
   border: 1px solid rgba(0, 240, 255, 0.2) !important;
   color: #e2e8f0 !important;
@@ -567,32 +593,131 @@ select {
   transition: all 0.3s ease;
 }
 
-input[type="text"]:focus,
-input[type="number"]:focus,
-input[type="search"]:focus,
-textarea:focus,
-select:focus {
+.theme-night input[type="text"]:focus,
+.theme-night input[type="number"]:focus,
+.theme-night input[type="search"]:focus,
+.theme-night textarea:focus,
+.theme-night select:focus {
   border-color: rgba(0, 240, 255, 0.5) !important;
   box-shadow: 0 0 15px rgba(0, 240, 255, 0.2) !important;
   outline: none;
 }
 
-input::placeholder {
+.theme-night input::placeholder {
   color: #64748b !important;
 }
 
-/* 下拉菜单样式 */
-[data-radix-popper-content-wrapper] {
+/* Day theme input styles */
+.theme-day input[type="text"],
+.theme-day input[type="number"],
+.theme-day input[type="search"],
+.theme-day textarea,
+.theme-day select {
+  background: #ffffff !important;
+  border: 1px solid #d1d5db !important;
+  color: #1e293b !important;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.theme-day input[type="text"]:focus,
+.theme-day input[type="number"]:focus,
+.theme-day input[type="search"]:focus,
+.theme-day textarea:focus,
+.theme-day select:focus {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
+  outline: none;
+}
+
+.theme-day input::placeholder {
+  color: #9ca3af !important;
+}
+
+/* Night theme dropdown/dialog */
+.theme-night [data-radix-popper-content-wrapper] {
   background: rgba(17, 24, 39, 0.95) !important;
   border: 1px solid rgba(0, 240, 255, 0.2) !important;
   backdrop-filter: blur(10px);
 }
 
-/* 对话框样式 */
-[role="dialog"] {
+.theme-night [role="dialog"] {
   background: rgba(17, 24, 39, 0.95) !important;
   border: 1px solid rgba(0, 240, 255, 0.2) !important;
   backdrop-filter: blur(12px);
+}
+
+/* Day theme dropdown/dialog */
+.theme-day [data-radix-popper-content-wrapper] {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.theme-day [role="dialog"] {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+/* Day mode component overrides */
+.theme-day .tech-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+}
+
+.theme-day .tech-card:hover {
+  border-color: rgba(37, 99, 235, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.theme-day .tech-button {
+  position: relative;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  color: #2563eb;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.theme-day .tech-button:hover {
+  background: rgba(37, 99, 235, 0.12);
+  border-color: rgba(37, 99, 235, 0.4);
+}
+
+/* Hide neon effects in day mode */
+.theme-day .neon-glow-cyan,
+.theme-day .neon-glow-purple,
+.theme-day .neon-glow-red,
+.theme-day .neon-glow-green,
+.theme-day .neon-glow-yellow {
+  box-shadow: none;
+}
+
+.theme-day .text-glow-cyan,
+.theme-day .text-glow-purple,
+.theme-day .text-glow-red {
+  text-shadow: none;
+}
+
+.theme-day .glass-panel {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Day mode scrollbar */
+.theme-day .custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.theme-day .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #94a3b8;
 }
 
 /* ==================== 移动端响应式样式 ==================== */

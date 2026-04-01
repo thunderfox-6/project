@@ -20,7 +20,8 @@ model Bridge {
   lineName    String?      // 线路名称
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-  spans       BridgeSpan[] // 桥孔列表
+  spans            BridgeSpan[]      // 桥孔列表
+  inspectionTasks  InspectionTask[]  // 检查任务列表
 }
 
 // 桥孔信息
@@ -93,6 +94,18 @@ model WalkingBoard {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
   span          BridgeSpan @relation(fields: [spanId], references: [id], onDelete: Cascade)
+  photos        BoardPhoto[]
+}
+
+// 步行板照片
+model BoardPhoto {
+  id          String   @id @default(cuid())
+  boardId     String
+  photo       String   // base64 encoded
+  description String?
+  uploadedBy  String?
+  uploadedAt  DateTime @default(now())
+  board       WalkingBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
 }
 
 // 用户信息
@@ -112,6 +125,7 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   operations    OperationLog[]    // 操作日志
+  notifications Notification[]   // 站内通知
 }
 
 // 操作日志
@@ -132,4 +146,105 @@ model OperationLog {
   errorMsg      String?           // 错误信息
   createdAt     DateTime @default(now())
   user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+// 检查任务
+model InspectionTask {
+  id            String    @id @default(cuid())
+  bridgeId      String
+  bridge        Bridge    @relation(fields: [bridgeId], references: [id], onDelete: Cascade)
+  assignedTo    String?
+  dueDate       DateTime
+  status        String    @default("pending") // pending, in_progress, completed
+  priority      String    @default("normal")  // low, normal, high, urgent
+  notes         String?
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// 步行板状态快照（每次更新前保存旧状态）
+model BoardStatusSnapshot {
+  id              String   @id @default(cuid())
+  boardId         String   // 关联步行板ID（无外键，避免级联删除）
+  spanId          String   // 冗余存储孔位ID
+  bridgeId        String   // 冗余存储桥梁ID
+
+  // 完整状态快照
+  status            String
+  damageDesc        String?
+  inspectedBy       String?
+  inspectedAt       DateTime?
+  antiSlipLevel     Int?
+  connectionStatus  String?
+  weatherCondition  String?
+  visibility        Int?
+  railingStatus     String?
+  bracketStatus     String?
+  hasObstacle       Boolean  @default(false)
+  obstacleDesc      String?
+  hasWaterAccum     Boolean  @default(false)
+  waterAccumDepth   Float?
+  remarks           String?
+  boardLength       Float?
+  boardWidth        Float?
+  boardThickness    Float?
+
+  snapshotReason  String   @default("update") // update, batch_update, import
+  createdAt       DateTime @default(now())
+}
+
+// 预警规则配置
+model AlertRule {
+  id              String   @id @default(cuid())
+  name            String   // 规则名称
+  description     String?  // 规则描述
+  enabled         Boolean  @default(true)
+  severity        String   @default("warning") // critical, warning, info
+  scope           String   @default("bridge") // bridge, span, board
+  condition       String   // JSON条件: {"field":"damageRate","operator":">","value":30}
+  messageTemplate String   // 模板: {bridgeName} 损坏率达到 {damageRate}%
+  priority        Int      @default(100)
+  isSystem        Boolean  @default(false) // 系统内置不可删除
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  alertRecords    AlertRecord[]
+}
+
+// 告警记录
+model AlertRecord {
+  id            String     @id @default(cuid())
+  ruleId        String
+  rule          AlertRule  @relation(fields: [ruleId], references: [id])
+  bridgeId      String
+  spanId        String?
+  boardId       String?
+  severity      String     // critical, warning, info
+  title         String
+  message       String
+  status        String     @default("active") // active, resolved, dismissed
+  resolvedBy    String?
+  resolvedAt    DateTime?
+  resolveNote   String?
+  triggerData   String?    // 触发时的数据快照(JSON)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+// 站内通知
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  message     String
+  type        String   @default("alert")  // alert | system | task
+  severity    String?                        // critical | warning | info
+  relatedId   String?                        // AlertRecord.id 或其他关联ID
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
 }

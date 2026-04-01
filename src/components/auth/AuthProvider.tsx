@@ -2,10 +2,8 @@
 
 import { useEffect, useState, createContext, useContext, ReactNode } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Loader2, LogOut, User, History, Users } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { Suspense } from 'react'
 
 interface UserInfo {
   id: string
@@ -33,7 +31,7 @@ export function useAuthContext() {
 }
 
 // 用户管理对话框（延迟加载）
-function UserManagementDialogWrapper({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function UserManagementDialogWrapper({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [Component, setComponent] = useState<React.ComponentType<{ open: boolean; onClose: () => void }> | null>(null)
   
   useEffect(() => {
@@ -49,7 +47,7 @@ function UserManagementDialogWrapper({ open, onClose }: { open: boolean; onClose
 }
 
 // 操作日志对话框（延迟加载）
-function OperationLogDialogWrapper({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function OperationLogDialogWrapper({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [Component, setComponent] = useState<React.ComponentType<{ open: boolean; onClose: () => void }> | null>(null)
   
   useEffect(() => {
@@ -70,8 +68,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserInfo | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [userManagementOpen, setUserManagementOpen] = useState(false)
-  const [logDialogOpen, setLogDialogOpen] = useState(false)
 
   useEffect(() => {
     const storedToken = localStorage.getItem('token')
@@ -146,42 +142,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null
   }
 
-  const roleLabels: Record<string, { label: string; color: string }> = {
-    admin: { label: '管理员', color: 'text-purple-400' },
-    manager: { label: '管理者', color: 'text-blue-400' },
-    user: { label: '用户', color: 'text-cyan-400' },
-    viewer: { label: '访客', color: 'text-gray-400' }
-  }
-  const roleConfig = roleLabels[user?.role || 'viewer'] || roleLabels.viewer
-
   return (
     <AuthContext.Provider value={{ user, token, loading, logout, isAdmin, hasPermission }}>
-      {user && pathname !== '/login' && (
-        <>
-          <div className="fixed top-0 right-0 z-50 flex items-center gap-2 p-2 bg-slate-900/90 backdrop-blur-sm border-b border-l border-slate-700/50 rounded-bl-lg">
-            <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-800/50">
-              <User className="w-4 h-4 text-slate-400" />
-              <span className="text-sm text-white">{user.name || user.username}</span>
-              <span className={`text-xs ${roleConfig.color}`}>({roleConfig.label})</span>
-            </div>
-            {isAdmin() && (
-              <Button variant="ghost" size="sm" onClick={() => setUserManagementOpen(true)} className="text-slate-400 hover:text-cyan-400" title="用户管理">
-                <Users className="w-4 h-4" />
-              </Button>
-            )}
-            {hasPermission('log:read') && (
-              <Button variant="ghost" size="sm" onClick={() => setLogDialogOpen(true)} className="text-slate-400 hover:text-cyan-400" title="操作日志">
-                <History className="w-4 h-4" />
-              </Button>
-            )}
-            <Button variant="ghost" size="sm" onClick={logout} className="text-slate-400 hover:text-red-400" title="退出登录">
-              <LogOut className="w-4 h-4" />
-            </Button>
-          </div>
-          <UserManagementDialogWrapper open={userManagementOpen} onClose={() => setUserManagementOpen(false)} />
-          <OperationLogDialogWrapper open={logDialogOpen} onClose={() => setLogDialogOpen(false)} />
-        </>
-      )}
       {children}
     </AuthContext.Provider>
   )
