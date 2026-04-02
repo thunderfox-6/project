@@ -134,7 +134,7 @@ export interface CurrentUser {
   role: string
 }
 
-export type MobileTab = 'bridge' | 'alert' | 'detail' | 'ai'
+export type MobileTab = 'bridge' | 'alert' | 'detail' | 'ai' | 'profile'
 
 // 预警相关类型
 export interface AlertRecord {

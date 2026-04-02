@@ -24,6 +24,7 @@ interface UseAIAssistantReturn {
   aiConfig: AIConfig
   setAiConfig: React.Dispatch<React.SetStateAction<AIConfig>>
   fetchedModels: { id: string; name?: string }[]
+  setFetchedModels: React.Dispatch<React.SetStateAction<{ id: string; name?: string }[]>>
   fetchingModels: boolean
   settingsOpen: boolean
   setSettingsOpen: React.Dispatch<React.SetStateAction<boolean>>
@@ -252,6 +253,7 @@ export function useAIAssistant({
     aiConfig,
     setAiConfig,
     fetchedModels,
+    setFetchedModels,
     fetchingModels,
     settingsOpen,
     setSettingsOpen,

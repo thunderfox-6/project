@@ -58,6 +58,7 @@ interface UseBoardEditingParams {
 interface UseBoardEditingReturn {
   editingBoard: WalkingBoard | null
   editDialogOpen: boolean
+  setEditDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
   editForm: EditForm
   setEditForm: React.Dispatch<React.SetStateAction<EditForm>>
   detailDialogOpen: boolean
@@ -261,6 +262,7 @@ export function useBoardEditing({
   return {
     editingBoard,
     editDialogOpen,
+    setEditDialogOpen,
     editForm,
     setEditForm,
     detailDialogOpen,
