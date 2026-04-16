@@ -4,7 +4,7 @@ import { persist } from 'zustand/middleware'
 // 材质类型
 export type MaterialType = 'galvanized_steel' | 'treated_wood' | 'composite' | 'aluminum'
 export type RailingStyle = 'industrial' | 'safety' | 'modern'
-export type RenderMode = 'photorealistic' | 'wireframe' | 'safety_inspection'
+export type RenderMode = 'photorealistic' | 'wireframe' | 'safety_inspection' | 'heatmap'
 export type SleeperType = 'wood' | 'concrete'
 
 // 3D场景配置
@@ -154,7 +154,8 @@ export const MATERIAL_CONFIGS: Record<MaterialType, {
 export const RENDER_MODE_CONFIGS: Record<RenderMode, { name: string; desc: string }> = {
   photorealistic: { name: '照片级真实感', desc: 'PBR物理渲染，逼真材质' },
   wireframe: { name: '线框结构图', desc: '显示几何结构线框' },
-  safety_inspection: { name: '施工安全检测', desc: '高亮关键结构区域' }
+  safety_inspection: { name: '施工安全检测', desc: '高亮关键结构区域' },
+  heatmap: { name: '损坏热力图', desc: '按区域损坏密度着色' }
 }
 
 // 护栏样式配置

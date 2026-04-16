@@ -3,7 +3,9 @@
     "allow": [
       "Bash(npx next:*)",
       "Bash(curl -s http://localhost:3000/login)",
-      "Bash(curl -s http://localhost:3000/)"
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(npx prisma:*)",
+      "Bash(npm install:*)"
     ]
   }
 }

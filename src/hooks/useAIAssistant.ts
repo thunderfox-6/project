@@ -65,17 +65,44 @@ export function useAIAssistant({
   const [settingsOpen, setSettingsOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Load AI config from localStorage
+  // Load AI config from server (fall back to localStorage for apiKey)
   useEffect(() => {
-    const savedConfig = localStorage.getItem('ai-config')
-    if (savedConfig) {
+    const loadConfig = async () => {
       try {
-        const parsed = JSON.parse(savedConfig)
-        setAiConfig(parsed)
-      } catch {
-        console.error('Failed to parse AI config')
+        const res = await authFetch('/api/ai/config')
+        const data = await res.json()
+        if (data.success && data.config) {
+          // 服务端返回脱敏key，需要从localStorage补充完整key
+          const localConfig = localStorage.getItem('ai-config')
+          let fullApiKey = data.config.apiKey
+          if (localConfig) {
+            try {
+              const parsed = JSON.parse(localConfig)
+              if (parsed.apiKey && !parsed.apiKey.startsWith('****')) {
+                fullApiKey = parsed.apiKey
+              }
+            } catch { /* ignore */ }
+          }
+          setAiConfig({
+            ...data.config,
+            apiKey: fullApiKey || ''
+          })
+          return
+        }
+      } catch { /* fall through to localStorage */ }
+
+      // Fallback: load from localStorage
+      const savedConfig = localStorage.getItem('ai-config')
+      if (savedConfig) {
+        try {
+          const parsed = JSON.parse(savedConfig)
+          setAiConfig(parsed)
+        } catch {
+          console.error('Failed to parse AI config')
+        }
       }
     }
+    loadConfig()
   }, [])
 
   // Auto-scroll to bottom of messages
@@ -83,10 +110,18 @@ export function useAIAssistant({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [aiMessages])
 
-  // Save AI config
-  const saveAiConfig = useCallback((config: AIConfig) => {
+  // Save AI config (server + localStorage for apiKey)
+  const saveAiConfig = useCallback(async (config: AIConfig) => {
     setAiConfig(config)
+    // localStorage暂存完整key（用于会话内API调用）
     localStorage.setItem('ai-config', JSON.stringify(config))
+    try {
+      await authFetch('/api/ai/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      })
+    } catch { /* non-critical */ }
     toast.success('AI配置已保存')
     setSettingsOpen(false)
   }, [])

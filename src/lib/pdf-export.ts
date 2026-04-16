@@ -1,5 +1,6 @@
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
+import QRCode from 'qrcode'
 
 // ===== 类型定义 =====
 interface WalkingBoard {
@@ -121,7 +122,30 @@ function removeContainer(container: HTMLDivElement) {
 }
 
 // ===== 生成封面 HTML =====
-function renderCoverHtml(bridge: Bridge, totalBoards: number, damageRate: number): string {
+function renderCoverHtml(bridge: Bridge, totalBoards: number, damageRate: number, qrDataUrl?: string): string {
+  // 收集最近巡检人信息
+  const inspectors = new Set<string>()
+  const inspectionDates: string[] = []
+  bridge.spans.forEach(span => {
+    span.walkingBoards.forEach(b => {
+      if (b.inspectedBy) inspectors.add(b.inspectedBy)
+      if (b.inspectedAt) inspectionDates.push(b.inspectedAt.slice(0, 10))
+    })
+  })
+  const inspectorList = Array.from(inspectors).slice(0, 5).join('、') || '--'
+  const latestInspection = inspectionDates.length > 0
+    ? inspectionDates.sort().reverse()[0]
+    : '--'
+
+  // 天气统计
+  const weathers = new Set<string>()
+  const weatherLabels: Record<string, string> = { normal: '正常', rain: '雨天', snow: '雪天', fog: '雾天', ice: '结冰' }
+  bridge.spans.forEach(span => {
+    span.walkingBoards.forEach(b => {
+      // walkingBoard doesn't have weatherCondition in this interface, skip
+    })
+  })
+
   return `
     <div style="width: 794px; padding: 40px; background: #fff; box-sizing: border-box;">
       <div style="background: linear-gradient(135deg, #1e3a8a, #2563eb); padding: 30px; border-radius: 8px; margin-bottom: 30px;">
@@ -135,10 +159,19 @@ function renderCoverHtml(bridge: Bridge, totalBoards: number, damageRate: number
         <tr style="background: #f8fafc;"><td style="padding: 10px 15px; color: #64748b;">总孔数</td><td style="padding: 10px 15px; font-weight: bold; color: #1e293b;">${bridge.totalSpans} 孔</td></tr>
         <tr><td style="padding: 10px 15px; color: #64748b;">步行板总数</td><td style="padding: 10px 15px; font-weight: bold; color: #1e293b;">${totalBoards} 块</td></tr>
         <tr style="background: #f8fafc;"><td style="padding: 10px 15px; color: #64748b;">整体损坏率</td><td style="padding: 10px 15px; font-weight: bold; color: ${damageRate >= 30 ? '#ef4444' : damageRate >= 15 ? '#f97316' : damageRate >= 5 ? '#eab308' : '#22c55e'};">${damageRate.toFixed(1)}%</td></tr>
+        <tr><td style="padding: 10px 15px; color: #64748b;">巡检人员</td><td style="padding: 10px 15px; font-weight: bold; color: #1e293b;">${inspectorList}</td></tr>
+        <tr style="background: #f8fafc;"><td style="padding: 10px 15px; color: #64748b;">最近巡检日期</td><td style="padding: 10px 15px; font-weight: bold; color: #1e293b;">${latestInspection}</td></tr>
         <tr><td style="padding: 10px 15px; color: #64748b;">报告日期</td><td style="padding: 10px 15px; font-weight: bold; color: #1e293b;">${new Date().toLocaleDateString('zh-CN')}</td></tr>
       </table>
-      <div style="margin-top: 60px; text-align: center; color: #94a3b8; font-size: 12px;">
-        铁路明桥面步行板可视化管理系统 自动生成
+      <div style="display: flex; align-items: flex-end; justify-content: space-between; margin-top: 40px;">
+        <div style="color: #94a3b8; font-size: 12px;">
+          铁路明桥面步行板可视化管理系统 自动生成
+        </div>
+        ${qrDataUrl ? `
+        <div style="text-align: center;">
+          <img src="${qrDataUrl}" width="80" height="80" style="border: 1px solid #e2e8f0; border-radius: 4px;" />
+          <div style="font-size: 9px; color: #94a3b8; margin-top: 4px;">扫码查看详情</div>
+        </div>` : ''}
       </div>
     </div>`
 }
@@ -282,6 +315,89 @@ function renderSummaryHtml(bridge: Bridge): string {
     </div>`
 }
 
+// ===== 生成巡检记录页 HTML =====
+function renderInspectionLogHtml(bridge: Bridge): string {
+  // 收集所有有巡检记录的步行板
+  const records: {
+    spanNumber: number
+    position: string
+    boardNumber: number
+    status: string
+    damageDesc: string | null
+    inspectedBy: string | null
+    inspectedAt: string | null
+    remarks: string | null
+  }[] = []
+
+  const positionLabels: Record<string, string> = {
+    upstream: '上行', downstream: '下行',
+    shelter_left: '上行避车台', shelter_right: '下行避车台', shelter: '避车台'
+  }
+
+  bridge.spans.forEach(span => {
+    span.walkingBoards.forEach(board => {
+      if (board.status !== 'normal' || board.inspectedBy) {
+        records.push({
+          spanNumber: span.spanNumber,
+          position: positionLabels[board.position] || board.position,
+          boardNumber: board.boardNumber,
+          status: board.status,
+          damageDesc: board.damageDesc,
+          inspectedBy: board.inspectedBy,
+          inspectedAt: board.inspectedAt,
+          remarks: board.remarks,
+        })
+      }
+    })
+  })
+
+  // 按巡检时间降序排列
+  records.sort((a, b) => {
+    if (!a.inspectedAt) return 1
+    if (!b.inspectedAt) return -1
+    return b.inspectedAt.localeCompare(a.inspectedAt)
+  })
+
+  const statusLabels: Record<string, string> = {
+    normal: '正常', minor_damage: '轻微损坏', severe_damage: '严重损坏',
+    fracture_risk: '断裂风险', replaced: '已更换', missing: '缺失'
+  }
+
+  // 只显示前50条（PDF空间有限）
+  const displayRecords = records.slice(0, 50)
+
+  const rows = displayRecords.map(r => {
+    const sc = STATUS_COLORS[r.status] || STATUS_COLORS.normal
+    return `<tr>
+      <td style="padding: 4px 6px; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #1e293b;">${r.spanNumber}</td>
+      <td style="padding: 4px 6px; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #1e293b;">${r.position}${r.boardNumber}号</td>
+      <td style="padding: 4px 6px; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: ${sc.color}; font-weight: 600;">${statusLabels[r.status] || r.status}</td>
+      <td style="padding: 4px 6px; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #475569; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${r.damageDesc || '--'}</td>
+      <td style="padding: 4px 6px; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #475569;">${r.inspectedBy || '--'}</td>
+      <td style="padding: 4px 6px; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #475569;">${r.inspectedAt ? r.inspectedAt.slice(0, 10) : '--'}</td>
+    </tr>`
+  }).join('')
+
+  return `
+    <div style="width: 794px; padding: 20px 30px; background: #fff; box-sizing: border-box;">
+      <div style="background: #1e3a8a; color: #fff; font-size: 11px; padding: 4px 10px; margin: -20px -30px 15px -30px; text-align: center;">${bridge.name}</div>
+      <h2 style="font-size: 18px; color: #1e293b; margin: 0 0 5px 0;">巡检记录明细</h2>
+      <p style="font-size: 11px; color: #64748b; margin: 0 0 12px 0;">共 ${records.length} 条记录${records.length > 50 ? '，显示前50条' : ''}</p>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr style="background: #f1f5f9;">
+          <th style="padding: 5px 6px; font-size: 10px; color: #64748b; text-align: left; border-bottom: 2px solid #e2e8f0;">孔号</th>
+          <th style="padding: 5px 6px; font-size: 10px; color: #64748b; text-align: left; border-bottom: 2px solid #e2e8f0;">位置</th>
+          <th style="padding: 5px 6px; font-size: 10px; color: #64748b; text-align: left; border-bottom: 2px solid #e2e8f0;">状态</th>
+          <th style="padding: 5px 6px; font-size: 10px; color: #64748b; text-align: left; border-bottom: 2px solid #e2e8f0;">损坏描述</th>
+          <th style="padding: 5px 6px; font-size: 10px; color: #64748b; text-align: left; border-bottom: 2px solid #e2e8f0;">巡检人</th>
+          <th style="padding: 5px 6px; font-size: 10px; color: #64748b; text-align: left; border-bottom: 2px solid #e2e8f0;">日期</th>
+        </tr>
+        ${rows || '<tr><td colspan="6" style="padding: 20px; text-align: center; color: #94a3b8; font-size: 12px;">暂无巡检记录</td></tr>'}
+      </table>
+      ${records.length > 50 ? `<p style="font-size: 10px; color: #94a3b8; margin-top: 8px;">* 完整记录请查看系统</p>` : ''}
+    </div>`
+}
+
 // ===== 生成图例页 HTML =====
 function renderLegendHtml(bridge: Bridge): string {
   const legendItems = Object.entries(STATUS_COLORS).map(([key, cfg]) => {
@@ -376,8 +492,17 @@ export async function exportBoardStatusPdf(bridge: Bridge): Promise<void> {
   const totalDamaged = allStats.reduce((s, a) => s + a.damaged, 0)
   const damageRate = totalBoards > 0 ? (totalDamaged / totalBoards * 100) : 0
 
-  // 1. 封面
-  await captureAndAddPage(pdf, renderCoverHtml(bridge, totalBoards, damageRate), true)
+  // 生成二维码（链接到系统中的桥梁页面）
+  let qrDataUrl: string | undefined
+  try {
+    const systemUrl = typeof window !== 'undefined' ? `${window.location.origin}/?bridge=${bridge.id}` : ''
+    if (systemUrl) {
+      qrDataUrl = await QRCode.toDataURL(systemUrl, { width: 120, margin: 1 })
+    }
+  } catch { /* non-critical */ }
+
+  // 1. 封面（含二维码）
+  await captureAndAddPage(pdf, renderCoverHtml(bridge, totalBoards, damageRate, qrDataUrl), true)
 
   // 2. 各孔详情页
   for (const span of bridge.spans) {
@@ -387,7 +512,10 @@ export async function exportBoardStatusPdf(bridge: Bridge): Promise<void> {
   // 3. 汇总页
   await captureAndAddPage(pdf, renderSummaryHtml(bridge), false)
 
-  // 4. 图例页
+  // 4. 巡检记录页
+  await captureAndAddPage(pdf, renderInspectionLogHtml(bridge), false)
+
+  // 5. 图例页
   await captureAndAddPage(pdf, renderLegendHtml(bridge), false)
 
   // 下载

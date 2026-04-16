@@ -113,6 +113,18 @@ export default function TrendAnalysis({ bridgeStats, bridgeId, theme }: TrendAna
   const [realData, setRealData] = useState<any[]>([])
   const [useRealData, setUseRealData] = useState(false)
 
+  // 对比分析数据
+  const [comparisonData, setComparisonData] = useState<{
+    compareType: string
+    currentPeriod: string
+    previousPeriod: string
+    current: { totalBoards: number; damageRate: number; highRiskRate: number; normal: number; minorDamage: number; severeDamage: number; fractureRisk: number }
+    previous: { totalBoards: number; damageRate: number; highRiskRate: number; normal: number; minorDamage: number; severeDamage: number; fractureRisk: number }
+    changes: { damageRate: number; damageRatePercent: number; highRiskRate: number; totalBoards: number; damagedBoards: number; trend: string }
+    hasHistoricalData: boolean
+  } | null>(null)
+  const [compareType, setCompareType] = useState<'month_over_month' | 'year_over_year'>('month_over_month')
+
   useEffect(() => {
     if (!bridgeId) return
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
@@ -130,6 +142,22 @@ export default function TrendAnalysis({ bridgeStats, bridgeId, theme }: TrendAna
       })
       .catch(() => {})
   }, [bridgeId])
+
+  // 获取对比分析数据
+  useEffect(() => {
+    if (!bridgeId) { setComparisonData(null); return }
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    if (!token) return
+
+    fetch(`/api/stats/comparison?bridgeId=${bridgeId}&compareType=${compareType}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.success) setComparisonData(data)
+      })
+      .catch(() => {})
+  }, [bridgeId, compareType])
 
   const trendData = useMemo(() => {
     if (useRealData && realData.length >= 2) {
@@ -374,6 +402,88 @@ export default function TrendAnalysis({ bridgeStats, bridgeId, theme }: TrendAna
           >
             * 基于线性回归的简化预测，仅供参考
           </p>
+        </div>
+      )}
+
+      {/* Comparison Analysis */}
+      {bridgeId && (
+        <div className={`p-3 rounded-lg border ${isNight ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-gray-200'}`}>
+          <div className="flex items-center justify-between mb-2">
+            <h4 className={`text-xs font-semibold ${isNight ? 'text-cyan-300' : 'text-blue-600'}`}>
+              对比分析
+            </h4>
+            <div className="flex gap-1">
+              <button
+                onClick={() => setCompareType('month_over_month')}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all ${
+                  compareType === 'month_over_month'
+                    ? (isNight ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/40' : 'bg-blue-100 text-blue-700 border border-blue-300')
+                    : (isNight ? 'bg-slate-700 text-slate-400 hover:bg-slate-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')
+                }`}
+              >
+                环比
+              </button>
+              <button
+                onClick={() => setCompareType('year_over_year')}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all ${
+                  compareType === 'year_over_year'
+                    ? (isNight ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/40' : 'bg-blue-100 text-blue-700 border border-blue-300')
+                    : (isNight ? 'bg-slate-700 text-slate-400 hover:bg-slate-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')
+                }`}
+              >
+                同比
+              </button>
+            </div>
+          </div>
+
+          {comparisonData ? (
+            <div className="space-y-2">
+              {/* Period headers */}
+              <div className={`grid grid-cols-3 gap-2 text-[10px] ${isNight ? 'text-slate-400' : 'text-gray-500'}`}>
+                <div></div>
+                <div className="text-center font-medium">{comparisonData.currentPeriod}</div>
+                <div className="text-center font-medium">{comparisonData.previousPeriod}</div>
+              </div>
+
+              {/* Metrics comparison */}
+              <div className="space-y-1.5">
+                {[
+                  { label: '损坏率', current: comparisonData.current.damageRate, prev: comparisonData.previous.damageRate, unit: '%', change: comparisonData.changes.damageRate },
+                  { label: '高风险率', current: comparisonData.current.highRiskRate, prev: comparisonData.previous.highRiskRate, unit: '%', change: comparisonData.changes.highRiskRate },
+                  { label: '损坏板数', current: comparisonData.current.minorDamage + comparisonData.current.severeDamage + comparisonData.current.fractureRisk, prev: comparisonData.previous.minorDamage + comparisonData.previous.severeDamage + comparisonData.previous.fractureRisk, unit: '块', change: comparisonData.changes.damagedBoards },
+                ].map((item) => (
+                  <div key={item.label} className={`grid grid-cols-3 gap-2 text-xs items-center py-1 ${isNight ? 'border-slate-700/50' : 'border-gray-100'}`} style={{ borderBottomWidth: 1 }}>
+                    <span className={isNight ? 'text-slate-300' : 'text-gray-700'}>{item.label}</span>
+                    <div className="text-center">
+                      <span className={`font-medium ${isNight ? 'text-slate-200' : 'text-gray-800'}`}>{item.current}{item.unit}</span>
+                    </div>
+                    <div className="text-center">
+                      <span className={isNight ? 'text-slate-400' : 'text-gray-600'}>
+                        {comparisonData.hasHistoricalData ? `${item.prev}${item.unit}` : '--'}
+                      </span>
+                      {comparisonData.hasHistoricalData && item.change !== 0 && (
+                        <span className={`ml-1 text-[10px] font-medium ${
+                          item.change > 0 ? 'text-red-500' : 'text-green-500'
+                        }`}>
+                          {item.change > 0 ? '↑' : '↓'}{Math.abs(item.change).toFixed(1)}{item.unit}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {!comparisonData.hasHistoricalData && (
+                <p className={`text-[10px] ${isNight ? 'text-slate-500' : 'text-gray-400'}`}>
+                  * 上期无历史快照数据，对比数据基于当前实时状态
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className={`text-center py-3 text-xs ${isNight ? 'text-slate-500' : 'text-gray-400'}`}>
+              加载对比数据中...
+            </div>
+          )}
         </div>
       )}
     </div>

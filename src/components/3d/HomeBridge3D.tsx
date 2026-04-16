@@ -872,6 +872,36 @@ function HomeBridge3D({ span, theme = 'night', onBoardClick, isMobile }: HomeBri
               obj.material.emissiveIntensity = 0.2
             }
             break
+          case 'heatmap': {
+            obj.material.wireframe = false
+            if (obj.userData.boardData) {
+              const bd = obj.userData.boardData as BoardData
+              // Compute heatmap color based on status severity
+              const severityMap: Record<string, number> = {
+                normal: 0,
+                replaced: 0.05,
+                minor_damage: 0.35,
+                severe_damage: 0.65,
+                missing: 0.8,
+                fracture_risk: 1.0,
+              }
+              const severity = severityMap[bd.status] ?? 0
+              // Green -> Yellow -> Red gradient
+              const heatColor = new THREE.Color()
+              if (severity < 0.5) {
+                heatColor.setRGB(severity * 2, 1, 0) // Green to Yellow
+              } else {
+                heatColor.setRGB(1, 1 - (severity - 0.5) * 2, 0) // Yellow to Red
+              }
+              obj.material.color = heatColor
+              obj.material.emissive = heatColor
+              obj.material.emissiveIntensity = 0.2 + severity * 0.4
+            } else {
+              obj.material.emissive = new THREE.Color(0x111111)
+              obj.material.emissiveIntensity = 0.05
+            }
+            break
+          }
         }
         obj.material.needsUpdate = true
       }
@@ -1068,6 +1098,17 @@ function HomeBridge3D({ span, theme = 'night', onBoardClick, isMobile }: HomeBri
           const baseY = mesh.userData.baseY ?? mesh.position.y
           if (mesh.userData.baseY === undefined) mesh.userData.baseY = mesh.position.y
           mesh.position.y = baseY + Math.sin(elapsed * 2 + mesh.position.x) * 0.04
+        }
+
+        // Pulsing glow animation for damaged boards
+        if (bd && (bd.status === 'fracture_risk' || bd.status === 'severe_damage')) {
+          const mat = mesh.material as THREE.MeshStandardMaterial
+          if (mat.emissive) {
+            const pulseSpeed = bd.status === 'fracture_risk' ? 3.0 : 2.0
+            const pulseMin = bd.status === 'fracture_risk' ? 0.3 : 0.15
+            const pulseMax = bd.status === 'fracture_risk' ? 0.9 : 0.5
+            mat.emissiveIntensity = pulseMin + (pulseMax - pulseMin) * (0.5 + 0.5 * Math.sin(elapsed * pulseSpeed + mesh.position.z))
+          }
         }
       })
 
@@ -1407,6 +1448,7 @@ function HomeBridge3D({ span, theme = 'night', onBoardClick, isMobile }: HomeBri
               <option value="photorealistic">照片级真实感</option>
               <option value="wireframe">线框结构图</option>
               <option value="safety_inspection">施工安全检测</option>
+              <option value="heatmap">损坏热力图</option>
             </select>
           </div>
 
@@ -1478,12 +1520,63 @@ function HomeBridge3D({ span, theme = 'night', onBoardClick, isMobile }: HomeBri
         <span className={`ml-2 ${tc ? 'text-slate-400' : 'text-gray-500'}`}>({span.spanLength}m)</span>
       </div>
 
+      {/* Damage status panel */}
+      {(() => {
+        const boards = span.walkingBoards || []
+        const total = boards.length
+        const damaged = boards.filter(b => b.status !== 'normal' && b.status !== 'replaced').length
+        const highRisk = boards.filter(b => b.status === 'fracture_risk' || b.status === 'severe_damage').length
+        const damageRate = total > 0 ? ((damaged / total) * 100).toFixed(1) : '0'
+        const statusCounts: Record<string, number> = {}
+        boards.forEach(b => { statusCounts[b.status] = (statusCounts[b.status] || 0) + 1 })
+
+        return (
+          <div className={`absolute top-12 right-2 ${panelBg} backdrop-blur-sm border rounded-lg p-2.5 text-xs`}
+            style={{ width: isMobile ? '10rem' : '12rem' }}>
+            <div className={`font-bold mb-1.5 ${textPrimary}`}>状态概览</div>
+            <div className="space-y-1">
+              <div className="flex justify-between items-center">
+                <span className={textMuted}>总板数</span>
+                <span className={tc ? 'text-slate-200' : 'text-gray-800'}>{total}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className={textMuted}>损坏数</span>
+                <span className={damaged > 0 ? 'text-yellow-500 font-medium' : (tc ? 'text-slate-200' : 'text-gray-800')}>{damaged}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className={textMuted}>损坏率</span>
+                <span className={parseFloat(damageRate) > 15 ? 'text-red-500 font-bold' : parseFloat(damageRate) > 5 ? 'text-yellow-500 font-medium' : 'text-green-500'}>
+                  {damageRate}%
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className={textMuted}>高风险</span>
+                <span className={highRisk > 0 ? 'text-red-500 font-bold' : 'text-green-500'}>{highRisk}</span>
+              </div>
+            </div>
+
+            {/* Color legend */}
+            <div className={`mt-2 pt-1.5 border-t space-y-0.5`} style={{ borderColor: tc ? 'rgba(100,116,139,0.3)' : 'rgba(209,213,219,0.5)' }}>
+              {Object.entries(statusCounts).sort((a, b) => b[1] - a[1]).map(([status, count]) => (
+                <div key={status} className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
+                    style={{ backgroundColor: '#' + (STATUS_COLORS[status]?.getHexString() || '888888') }} />
+                  <span className={`flex-1 ${textMuted}`}>{STATUS_LABELS[status] || status}</span>
+                  <span className={tc ? 'text-slate-300' : 'text-gray-700'}>{count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Render mode indicator */}
       <div className={`absolute bottom-2 right-2 ${panelBg} backdrop-blur-sm border rounded-lg px-2 py-1 text-xs`}>
         <span className={textPrimary}>
           {config.renderMode === 'photorealistic' && '📷 照片级真实感'}
           {config.renderMode === 'wireframe' && '📐 线框结构图'}
           {config.renderMode === 'safety_inspection' && '🔍 施工安全检测'}
+          {config.renderMode === 'heatmap' && '🔥 损坏热力图'}
         </span>
       </div>
     </div>

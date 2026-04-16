@@ -28,17 +28,21 @@
 - **JSON 导入导出** — 完整数据版本化导入导出，支持合并/替换两种模式，全流程事务保护
 - **高级 Excel 导出** — 4 个 Sheet（桥梁总览、桥孔明细、步行板详情、隐患统计），含汇总分析
 - **PDF 报告导出** — 将 AI 生成的安全分析报告导出为 PDF 文件，支持自动分页和标题页
+- **巡检报告增强** — PDF 报告封面增加巡检人、巡检日期信息，新增巡检记录明细页（按时间排列所有非正常状态步行板），含二维码（扫码查看系统桥梁详情）
 
 ### AI 集成
 
 - **多模型 AI 助手** — 支持 GLM、OpenAI、Claude、DeepSeek、MiniMax、Kimi 等多家大模型
 - **安全分析报告** — AI 自动生成桥梁级别的安全评估报告
 - **对话式操作** — 通过自然语言对话修改步行板状态
+- **AI 配置服务端存储** — AI 密钥和配置保存在服务端数据库中，前端仅展示脱敏信息，API Key 不暴露在客户端代码中
+- **照片 AI 识别** — 上传巡检照片后，点击「AI识别」按钮，自动调用多模态 Vision API 分析损坏类型、严重程度、置信度，并给出修复建议
 
 ### 数据分析与可视化
 
 - **数据总览仪表盘** (`/dashboard`) — 全局视角展示所有桥梁健康度排名、损坏分布饼图、高风险告警列表、状态统计面板
 - **趋势分析图表** — 按月展示损坏率走势（面积图）和步行板状态分布变化（堆叠柱状图），支持真实历史数据 + 简单线性回归预测
+- **同比/环比对比分析** — 支持按月环比（Month-over-Month）和按年同比（Year-over-Year）对比损坏率、高风险率变化，箭头标识趋势方向
 - **桥梁地图** (`/map`) — SVG 风格化地图可视化桥梁位置分布，颜色编码健康状态，点击查看详情
 
 ### 预警系统
@@ -87,6 +91,9 @@
 ### 其他特性
 
 - **3D 桥梁模型** — Three.js 程序化生成桥梁，支持 PBR 材质、多种渲染模式、可调参数
+- **3D 热力图模式** — 第 4 种渲染模式，按损坏严重度绿→黄→红渐变着色，直观呈现损坏密度分布
+- **3D 脉冲动画** — 断裂风险和严重损坏步行板自动呼吸式发光脉冲，不同等级不同频率，增强视觉警示效果
+- **3D 状态面板** — 3D 场景内嵌状态概览面板，实时显示当前孔位损坏统计、损坏率、高风险数和状态色块图例
 - **离线支持** — IndexedDB 本地存储，网络恢复后自动同步
 - **移动端适配** — 触控优化、双指缩放、底部导航栏、横竖屏自适应
 - **移动端手势引导** — 首次移动端访问时展示操作教程（缩放、滑动、点击）
@@ -122,6 +129,7 @@
 | 主题切换 | next-themes | ^0.4.6 |
 | 日期处理 | date-fns | ^4.1.0 |
 | 图片处理 | sharp | ^0.34.3 |
+| 二维码 | qrcode | ^1.5.4 |
 
 ---
 
@@ -188,6 +196,7 @@
 3. 点击「添加照片」选择图片文件
 4. 移动端支持直接调用相机拍摄
 5. 照片会以缩略图形式显示，点击可预览
+6. **AI 照片识别：** 上传照片后点击「AI识别最新照片损坏情况」按钮（需先配置 AI 模型），系统将自动分析照片中的损坏类型、严重程度和置信度，并给出修复建议
 
 ### 7. 查看数据总览
 
@@ -207,6 +216,10 @@
    - **状态分布：** 各类型步行板数量的时间变化
    - **趋势预测：** 基于线性回归的未来损坏率预测
    - **数据标识：** 图表会显示「真实数据」或「模拟数据」标识
+3. **对比分析：** 趋势图表下方的对比分析卡片
+   - 切换「环比」（本月 vs 上月）或「同比」（本月 vs 去年同月）
+   - 查看损坏率、高风险率、损坏板数的变化值和趋势箭头
+   - 数据来源基于历史快照，无快照时提示说明
 
 ### 9. 使用 AI 助手
 
@@ -340,6 +353,7 @@ bridge-board-system/
 │   │       ├── users/route.ts     # 用户 CRUD + RBAC
 │   │       ├── logs/route.ts      # 操作日志 (分页+筛选)
 │   │       ├── stats/route.ts     # 单桥统计
+│   │       ├── stats/comparison/route.ts  # 同比/环比对比分析
 │   │       ├── summary/route.ts   # 全桥汇总统计
 │   │       ├── export/route.ts    # JSON 数据导出
 │   │       ├── data/
@@ -349,7 +363,9 @@ bridge-board-system/
 │   │       ├── excel/export/route.ts  # 高级 Excel 导出
 │   │       ├── ai/
 │   │       │   ├── analyze/route.ts   # AI 安全分析
+│   │       │   ├── analyze-photo/route.ts  # AI 照片损坏识别（多模态 Vision）
 │   │       │   ├── chat/route.ts      # AI 对话
+│   │       │   ├── config/route.ts    # AI 配置服务端存储
 │   │       │   └── models/route.ts    # AI 模型列表
 │   │       └── auth/
 │   │           ├── login/route.ts         # 登录 (含锁定机制)
@@ -364,8 +380,8 @@ bridge-board-system/
 │   │   ├── bridge/
 │   │   │   ├── MobileGestureGuide.tsx    # 移动端手势引导
 │   │   │   ├── NotificationBell.tsx      # 通知铃铛组件（Popover + 轮询）
-│   │   │   ├── PhotoUpload.tsx           # 照片上传组件
-│   │   │   └── TrendAnalysis.tsx         # 趋势分析图表（支持真实数据）
+│   │   │   ├── PhotoUpload.tsx           # 照片上传 + AI 识别组件
+│   │   │   └── TrendAnalysis.tsx         # 趋势分析图表（真实数据 + 同比/环比对比）
 │   │   ├── user/
 │   │   │   ├── UserManagementDialog.tsx  # 用户管理对话框
 │   │   │   └── OperationLogDialog.tsx    # 操作日志对话框
@@ -398,7 +414,7 @@ bridge-board-system/
 │       ├── offline-db.ts          # IndexedDB 离线数据库
 │       ├── sync-service.ts        # 离线→在线同步服务
 │       ├── bridge3d-store.ts      # Zustand 3D 配置
-│       └── ai-client.ts           # AI 客户端 (多模型适配)
+│       └── ai-client.ts           # AI 客户端 (多模型适配 + 多模态 Vision)
 ├── .env                           # 环境变量
 ├── .env.example                   # 环境变量示例
 ├── package.json
@@ -519,6 +535,7 @@ bridge-board-system/
 | lastLoginAt | DateTime? | 最后登录时间 |
 | lastLoginIp | String? | 最后登录 IP |
 | loginCount | Int | 登录次数 (默认 0) |
+| aiConfig | String? | AI 配置 JSON（provider, model, apiKey, baseUrl） |
 | createdAt | DateTime | 创建时间 |
 | updatedAt | DateTime | 更新时间 |
 
@@ -748,6 +765,7 @@ npm run dev
 | 方法 | 路径 | 说明 | 权限 |
 |------|------|------|------|
 | GET | `/api/stats?bridgeId=` | 单桥统计 | `bridge:read` |
+| GET | `/api/stats/comparison?bridgeId=&compareType=` | 同比/环比对比分析（month_over_month / year_over_year） | `bridge:read` |
 | GET | `/api/summary` | 全桥汇总 | `bridge:read` |
 | GET | `/api/logs?page=&action=&module=` | 操作日志（分页） | `log:read` |
 
@@ -778,7 +796,10 @@ npm run dev
 | 方法 | 路径 | 说明 | 权限 |
 |------|------|------|------|
 | POST | `/api/ai/analyze` | AI 桥梁安全分析 | `ai:use` |
+| POST | `/api/ai/analyze-photo` | AI 照片损坏识别（多模态 Vision） | `ai:use` |
 | POST | `/api/ai/chat` | AI 对话（自然语言操作） | `ai:use` |
+| GET | `/api/ai/config` | 获取当前用户 AI 配置（apiKey 脱敏） | `ai:use` |
+| PUT | `/api/ai/config` | 保存 AI 配置到服务端 | `ai:use` |
 | POST | `/api/ai/models` | 获取可用 AI 模型列表 | `ai:use` |
 
 ---

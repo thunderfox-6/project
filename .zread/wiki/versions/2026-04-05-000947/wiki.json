@@ -1,0 +1,225 @@
+{
+  "id": "2026-04-05-000947",
+  "generated_at": "2026-04-04T16:09:47.9265587Z",
+  "language": "zh",
+  "pages": [
+    {
+      "slug": "1-xiang-mu-gai-lan-tie-lu-ming-qiao-mian-bu-xing-ban-ke-shi-hua-guan-li-xi-tong",
+      "title": "项目概览：铁路明桥面步行板可视化管理系统",
+      "file": "1-xiang-mu-gai-lan-tie-lu-ming-qiao-mian-bu-xing-ban-ke-shi-hua-guan-li-xi-tong.md",
+      "section": "快速入门",
+      "level": "Beginner"
+    },
+    {
+      "slug": "2-kuai-su-qi-dong-huan-jing-pei-zhi-yu-shou-ci-yun-xing",
+      "title": "快速启动：环境配置与首次运行",
+      "file": "2-kuai-su-qi-dong-huan-jing-pei-zhi-yu-shou-ci-yun-xing.md",
+      "section": "快速入门",
+      "level": "Beginner"
+    },
+    {
+      "slug": "3-xiang-mu-mu-lu-jie-gou-yu-mo-kuai-zhi-ze",
+      "title": "项目目录结构与模块职责",
+      "file": "3-xiang-mu-mu-lu-jie-gou-yu-mo-kuai-zhi-ze.md",
+      "section": "快速入门",
+      "level": "Beginner"
+    },
+    {
+      "slug": "4-ji-zhu-zhan-zong-lan-next-js-16-prisma-three-js",
+      "title": "技术栈总览：Next.js 16 + Prisma + Three.js",
+      "file": "4-ji-zhu-zhan-zong-lan-next-js-16-prisma-three-js.md",
+      "section": "快速入门",
+      "level": "Beginner"
+    },
+    {
+      "slug": "5-bu-xing-ban-zhuang-tai-ti-xi-yu-yan-se-bian-ma-gui-fan",
+      "title": "步行板状态体系与颜色编码规范",
+      "file": "5-bu-xing-ban-zhuang-tai-ti-xi-yu-yan-se-bian-ma-gui-fan.md",
+      "section": "快速入门",
+      "level": "Beginner"
+    },
+    {
+      "slug": "6-san-ji-shu-ju-mo-xing-qiao-liang-qiao-kong-bu-xing-ban",
+      "title": "三级数据模型：桥梁 → 桥孔 → 步行板",
+      "file": "6-san-ji-shu-ju-mo-xing-qiao-liang-qiao-kong-bu-xing-ban.md",
+      "section": "深入解析",
+      "group": "数据架构",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "7-prisma-shu-ju-ku-schema-she-ji-11-ge-mo-xing",
+      "title": "Prisma 数据库 Schema 设计（11 个模型）",
+      "file": "7-prisma-shu-ju-ku-schema-she-ji-11-ge-mo-xing.md",
+      "section": "深入解析",
+      "group": "数据架构",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "8-typescript-lei-xing-ding-yi-ti-xi",
+      "title": "TypeScript 类型定义体系",
+      "file": "8-typescript-lei-xing-ding-yi-ti-xi.md",
+      "section": "深入解析",
+      "group": "数据架构",
+      "level": "Beginner"
+    },
+    {
+      "slug": "9-ji-yu-wen-jian-de-session-hui-hua-guan-li-ji-zhi",
+      "title": "基于文件的 Session 会话管理机制",
+      "file": "9-ji-yu-wen-jian-de-session-hui-hua-guan-li-ji-zhi.md",
+      "section": "深入解析",
+      "group": "认证与权限",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "10-rbac-si-ji-jiao-se-quan-xian-kong-zhi-ti-xi",
+      "title": "RBAC 四级角色权限控制体系",
+      "file": "10-rbac-si-ji-jiao-se-quan-xian-kong-zhi-ti-xi.md",
+      "section": "深入解析",
+      "group": "认证与权限",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "11-deng-lu-an-quan-mi-ma-ha-xi-yu-zhang-hu-suo-ding-ce-lue",
+      "title": "登录安全：密码哈希与账户锁定策略",
+      "file": "11-deng-lu-an-quan-mi-ma-ha-xi-yu-zhang-hu-suo-ding-ce-lue.md",
+      "section": "深入解析",
+      "group": "认证与权限",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "12-restful-api-lu-you-jie-gou-yu-she-ji-gui-fan",
+      "title": "RESTful API 路由结构与设计规范",
+      "file": "12-restful-api-lu-you-jie-gou-yu-she-ji-gui-fan.md",
+      "section": "深入解析",
+      "group": "API 架构",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "13-requireauth-tong-jian-quan-zhong-jian-jian",
+      "title": "requireAuth 统一鉴权中间件",
+      "file": "13-requireauth-tong-jian-quan-zhong-jian-jian.md",
+      "section": "深入解析",
+      "group": "API 架构",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "14-zi-ding-yi-hooks-jia-gou-she-ji-mo-shi",
+      "title": "自定义 Hooks 架构设计模式",
+      "file": "14-zi-ding-yi-hooks-jia-gou-she-ji-mo-shi.md",
+      "section": "深入解析",
+      "group": "核心业务逻辑",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "15-bu-xing-ban-dan-kuai-bian-ji-yu-pi-liang-cao-zuo-liu-cheng",
+      "title": "步行板单块编辑与批量操作流程",
+      "file": "15-bu-xing-ban-dan-kuai-bian-ji-yu-pi-liang-cao-zuo-liu-cheng.md",
+      "section": "深入解析",
+      "group": "核心业务逻辑",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "16-yu-jing-gui-ze-yin-qing-kuai-zhao-bao-cun-tiao-jian-ping-gu-yu-zi-dong-qu-zhong",
+      "title": "预警规则引擎：快照保存、条件评估与自动去重",
+      "file": "16-yu-jing-gui-ze-yin-qing-kuai-zhao-bao-cun-tiao-jian-ping-gu-yu-zi-dong-qu-zhong.md",
+      "section": "深入解析",
+      "group": "核心业务逻辑",
+      "level": "Advanced"
+    },
+    {
+      "slug": "17-duo-fu-wu-shang-ai-ke-hu-duan-glm-openai-claude-deepseek-deng",
+      "title": "多服务商 AI 客户端（GLM/OpenAI/Claude/DeepSeek 等）",
+      "file": "17-duo-fu-wu-shang-ai-ke-hu-duan-glm-openai-claude-deepseek-deng.md",
+      "section": "深入解析",
+      "group": "AI 集成",
+      "level": "Advanced"
+    },
+    {
+      "slug": "18-ai-zhu-shou-dui-hua-yu-qiao-liang-an-quan-fen-xi",
+      "title": "AI 助手对话与桥梁安全分析",
+      "file": "18-ai-zhu-shou-dui-hua-yu-qiao-liang-an-quan-fen-xi.md",
+      "section": "深入解析",
+      "group": "AI 集成",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "19-excel-pi-liang-dao-ru-dao-chu-yu-shi-wu-bao-hu",
+      "title": "Excel 批量导入导出与事务保护",
+      "file": "19-excel-pi-liang-dao-ru-dao-chu-yu-shi-wu-bao-hu.md",
+      "section": "深入解析",
+      "group": "数据导入导出",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "20-pdf-an-quan-fen-xi-bao-gao-dao-chu",
+      "title": "PDF 安全分析报告导出",
+      "file": "20-pdf-an-quan-fen-xi-bao-gao-dao-chu.md",
+      "section": "深入解析",
+      "group": "数据导入导出",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "21-three-js-cheng-xu-hua-3d-qiao-liang-mo-xing-xuan-ran",
+      "title": "Three.js 程序化 3D 桥梁模型渲染",
+      "file": "21-three-js-cheng-xu-hua-3d-qiao-liang-mo-xing-xuan-ran.md",
+      "section": "深入解析",
+      "group": "可视化与交互",
+      "level": "Advanced"
+    },
+    {
+      "slug": "22-2d-wang-ge-shi-tu-yu-zheng-qiao-mo-shi",
+      "title": "2D 网格视图与整桥模式",
+      "file": "22-2d-wang-ge-shi-tu-yu-zheng-qiao-mo-shi.md",
+      "section": "深入解析",
+      "group": "可视化与交互",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "23-shu-ju-zong-lan-yi-biao-pan-yu-qu-shi-fen-xi-tu-biao",
+      "title": "数据总览仪表盘与趋势分析图表",
+      "file": "23-shu-ju-zong-lan-yi-biao-pan-yu-qu-shi-fen-xi-tu-biao.md",
+      "section": "深入解析",
+      "group": "可视化与交互",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "24-yi-dong-duan-gua-pei-yu-shou-shi-jiao-hu-yin-dao",
+      "title": "移动端适配与手势交互引导",
+      "file": "24-yi-dong-duan-gua-pei-yu-shou-shi-jiao-hu-yin-dao.md",
+      "section": "深入解析",
+      "group": "可视化与交互",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "25-chi-xian-zhi-chi-indexeddb-ben-di-cun-chu-yu-zi-dong-tong-bu-fu-wu",
+      "title": "离线支持：IndexedDB 本地存储与自动同步服务",
+      "file": "25-chi-xian-zhi-chi-indexeddb-ben-di-cun-chu-yu-zi-dong-tong-bu-fu-wu.md",
+      "section": "深入解析",
+      "group": "高级特性",
+      "level": "Advanced"
+    },
+    {
+      "slug": "26-xun-jian-ren-wu-guan-li-chuang-jian-fen-pei-yu-zhuang-tai-liu-zhuan",
+      "title": "巡检任务管理：创建、分配与状态流转",
+      "file": "26-xun-jian-ren-wu-guan-li-chuang-jian-fen-pei-yu-zhuang-tai-liu-zhuan.md",
+      "section": "深入解析",
+      "group": "高级特性",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "27-zhan-nei-tong-zhi-xi-tong-zi-dong-tui-song-yu-shi-shi-lun-xun",
+      "title": "站内通知系统：自动推送与实时轮询",
+      "file": "27-zhan-nei-tong-zhi-xi-tong-zi-dong-tui-song-yu-shi-shi-lun-xun.md",
+      "section": "深入解析",
+      "group": "高级特性",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "28-sheng-chan-bu-shu-zhi-nan-pm2-fan-xiang-dai-li",
+      "title": "生产部署指南（PM2 + 反向代理）",
+      "file": "28-sheng-chan-bu-shu-zhi-nan-pm2-fan-xiang-dai-li.md",
+      "section": "深入解析",
+      "level": "Intermediate"
+    }
+  ]
+}

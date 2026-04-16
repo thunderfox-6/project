@@ -122,6 +122,7 @@ model User {
   lastLoginAt   DateTime?         // 最后登录时间
   lastLoginIp   String?           // 最后登录IP
   loginCount    Int      @default(0) // 登录次数
+  aiConfig      String?  // AI配置JSON（provider, model, apiKey, baseUrl）
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   operations    OperationLog[]    // 操作日志
